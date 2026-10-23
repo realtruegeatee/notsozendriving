@@ -20,3 +20,5 @@
 - [x] Enable NPC cars to push other NPC cars off the road
 - [x] Make NPC shoves visibly forceful and contact-driven
 - [x] Add NPC overtaking with lane clearance and return-to-lane checks
+- [x] Fix NPC passing safety and smooth pull-out/return animation
+- [x] Verify complete NPC passes in both directions and game rendering
