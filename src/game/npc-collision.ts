@@ -2,8 +2,8 @@ import { carContact } from "./multiplayer-math";
 import { groundY, roadX, roadXd } from "./road";
 import { roadsideCrash } from "./traffic-reaction";
 
-export type CollisionNpc = { s: number; lane: number; v: number; crashAge: number; impactOffset: number; contactLeft: number; passOffset?: number; crashOrigin?: number; shove?: number };
-export function npcCrash(car: CollisionNpc) { return roadsideCrash(car.crashAge, car.lane, car.crashOrigin, car.shove); }
+export type CollisionNpc = { s: number; lane: number; v: number; crashAge: number; impactOffset: number; contactLeft: number; passOffset?: number; crashOrigin?: number; shove?: number; crashSide?: number };
+export function npcCrash(car: CollisionNpc) { return roadsideCrash(car.crashAge, car.lane, car.crashOrigin, car.shove, car.crashSide); }
 export function npcOffset(car: CollisionNpc) {
   return (car.crashAge < 0 ? car.lane + (car.passOffset ?? 0) : npcCrash(car).offset) + car.impactOffset;
 }

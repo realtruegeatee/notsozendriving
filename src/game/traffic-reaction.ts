@@ -61,10 +61,11 @@ export function pickRunoffVictim(aggressor: Aggressor, cars: readonly Aggressor[
 }
 
 /** A short skid into the ditch, then a stationary, tilted roadside wreck. */
-export function roadsideCrash(age: number, lane: number, origin = lane, shove = 0) {
+export function roadsideCrash(age: number, lane: number, origin = lane, shove = 0, toward = Math.sign(lane) || 1) {
   const t = Math.max(0, Math.min(1, age / (shove ? 0.85 : 1.3)));
   const ease = shove ? 1 - Math.pow(1 - t, 3) : t * t * (3 - 2 * t);
-  const side = Math.sign(lane) || 1;
+  // Either roadside: toward its own edge, or across the road to the far edge.
+  const side = toward;
   return {
     offset: origin + (side * (ROAD_HALF + 3.5) - origin) * ease,
     yaw: -side * (Math.sin(t * Math.PI / 2) * 0.95 + shove * Math.sin(t * Math.PI) * 0.35),
