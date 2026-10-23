@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { planAutodrive, RIGHT_PASS, RIGHT_PASS_WAIT } from "./autodrive";
+import { planAutodrive, predictedLane, RIGHT_PASS, RIGHT_PASS_WAIT } from "./autodrive";
 import { LANE } from "./road";
 import { maxSpeedForDistance, powerCurve } from "./speed";
 import { FEEL } from "./store";
@@ -187,4 +187,38 @@ it("returns home from a left pass when oncoming traffic threatens the actual lan
   const result = planAutodrive(0, 25, true, [{ z: -85, lane: -LANE, speed: 30, same: false }], 0, 0.05, -LANE);
   expect(result.lane).toBe(LANE);
   expect(result.targetSpeed).toBe(34);
+});
+it("overtakes fast traffic below the unlocked ceiling instead of treating 29 m/s as clear road", () => {
+  const result = planAutodrive(0, 45, false, [{ z: -80, lane: LANE, speed: 35, same: true }], 0, 0.05, LANE, maxSpeedForDistance(5000));
+  expect(result.passing).toBe(true);
+  expect(result.targetSpeed).toBe(maxSpeedForDistance(5000));
+});
+it("takes a tighter moving gap but never pulls into an alongside car", () => {
+  const blocker = { z: -50, lane: LANE, speed: 15, same: true };
+  expect(planAutodrive(0, 25, false, [blocker, { z: -28, lane: -LANE, speed: 24, same: true }]).passing).toBe(true);
+  expect(planAutodrive(0, 25, false, [blocker, { z: 0, lane: -LANE, speed: 24, same: true }]).passing).toBe(false);
+});
+it("anticipates an oncoming NPC moving into our lane before it arrives", () => {
+  const result = planAutodrive(0, 25, false, [{ z: -85, lane: -LANE, speed: 30, same: false, laneVelocity: 2.8, targetLane: LANE }]);
+  expect(result.lane).toBe(RIGHT_PASS);
+  expect(result.targetSpeed).toBe(34);
+});
+it("rejects a passing gap that another NPC is merging into", () => {
+  const result = planAutodrive(0, 25, false, [
+    { z: -50, lane: LANE, speed: 15, same: true },
+    { z: -22, lane: LANE, speed: 24, same: true, laneVelocity: -2.8, targetLane: -LANE },
+  ]);
+  expect(result.passing).toBe(false);
+});
+it("does not merge home into an NPC already steering into the return gap", () => {
+  const result = planAutodrive(0, 25, "right", [{ z: -12, lane: -LANE, speed: 22, same: true, laneVelocity: 2.8, targetLane: LANE }], 0, 0.05, RIGHT_PASS);
+  expect(result.passing).toBe("right");
+});
+it("forecasts lane changes only as far as their intended lane", () => {
+  expect(predictedLane({ z: 0, lane: -LANE, speed: 30, same: false, laneVelocity: 2.8, targetLane: LANE }, 3)).toBe(LANE);
+});
+it("holds acceleration until the actual footprint clears a close blocker", () => {
+  const car = { z: -15, lane: LANE, speed: 15, same: true };
+  expect(planAutodrive(0, 25, true, [car], 0, 0.05, LANE).targetSpeed).toBeLessThan(25);
+  expect(planAutodrive(0, 25, true, [car], 0, 0.05, -LANE).targetSpeed).toBe(34);
 });
