@@ -24,7 +24,7 @@ export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], des
   const blocker = homeCars.filter((o) => gap(o) > 0 && gap(o) < 45 && o.lane * car.lane > 0 && o.v < desiredSpeed - 1.5).sort((a, b) => gap(a) - gap(b))[0];
   const passingLane = -car.lane;
   const passClear = !cars.some((o) => o !== car && Math.abs(lateral(o) - passingLane) < 2.1 && gap(o) > -18 && gap(o) < (o.lane * car.lane > 0 ? 55 : Math.max(90, (car.v + o.v) * 3)));
-  const mergeClear = !homeCars.some((o) => gap(o) > -Math.max(8, 5 + (o.v - car.v) * 2) && gap(o) < Math.max(18, 6 + (car.v - o.v) * 2));
+  const mergeClear = !homeCars.some((o) => gap(o) > -Math.max(8, 5 + (o.v - car.v) * 2) && gap(o) < Math.max(8, 6 + (car.v - o.v) * 2));
   // Only start a pass with room to merge back in front of the blocker, never into a queue.
   const mergeSlot = !!blocker && !homeCars.some((o) => o !== blocker && gap(o) > gap(blocker) - 2 && gap(o) < gap(blocker) + 22);
   let passing = car.passing;
@@ -32,7 +32,7 @@ export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], des
   else if (!passing && blocker && passClear && mergeSlot) passing = true;
   let speed = desiredSpeed;
   // Stuck beside traffic with the pass closing: drop back behind it so the merge opens up.
-  if (passing && !passClear && !mergeClear && blocker) speed = Math.min(speed, blocker.v * 0.6);
+  if (passing && !passClear && !mergeClear && blocker) speed = Math.min(speed, Math.max(2, blocker.v * 0.6));
   const target = passing ? passingLane : car.lane;
   let swerve = false;
   for (const other of cars) {
@@ -47,7 +47,8 @@ export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], des
       const outOfLane = passing || Math.abs(offset - car.lane) > 0.5;
       // An overtaker coming at us in our lane: dive for the roadside instead of stopping.
       if (!outOfLane) { if (distance < 40) swerve = true; continue; }
-      speed = Math.min(speed, Math.max(0, (distance - 12) * 0.3));
+      // Heading home keeps a crawl so the lane change can finish instead of freezing in the wrong lane.
+      speed = Math.min(speed, Math.max(passing ? 0 : 1.5, (distance - 12) * 0.3));
     }
     else speed = Math.min(speed, Math.max(0, other.v + (distance - 12) * 0.6));
   }

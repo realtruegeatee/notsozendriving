@@ -98,3 +98,21 @@ it("A stuck passer drops back below the slow car when oncoming traffic closes in
   const slow = npc(2, 12), oncoming = npc(70, 20, -LANE);
   expect(planNpcDriving(passer, [passer, slow, oncoming], 22).speed).toBeLessThan(12);
 });
+
+it("a passer that dropped behind a slow car merges back in behind it instead of crawling in the oncoming lane", () => {
+  const passer = { ...npc(0, 2.2), passOffset: -2 * LANE, passing: true };
+  const slow = npc(12, 3.6), oncoming = npc(80, 20, -LANE);
+  const plan = planNpcDriving(passer, [passer, slow, oncoming], 22);
+  expect(plan.passing).toBe(false);
+  expect(plan.passOffset).toBe(0);
+});
+it("a stranded passer never fully parks while it steers home ahead of oncoming traffic", () => {
+  const passer = { ...npc(0, 1), passOffset: -2 * LANE, passing: false, offset: -LANE };
+  const oncoming = npc(10, 20, -LANE);
+  expect(planNpcDriving(passer, [passer, oncoming], 22).speed).toBeGreaterThan(0);
+});
+it("a stuck passer beside a stopped car keeps creeping instead of freezing", () => {
+  const passer = { ...npc(0, 5), passOffset: -2 * LANE, passing: true };
+  const stopped = npc(2, 0), oncoming = npc(70, 20, -LANE);
+  expect(planNpcDriving(passer, [passer, stopped, oncoming], 22).speed).toBeGreaterThan(0);
+});
