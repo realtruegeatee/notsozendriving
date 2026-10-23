@@ -187,7 +187,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         if (crashing) n.crashAge += dt;
         n.reactionLeft = Math.max(0, n.reactionLeft - dt);
         if (!crashing && n.reactionLeft === 0) n.reaction = null;
-        let target = reactionSpeed(n.base, n.reaction);
+        let target = npcTargetSpeed(n.base, n.reaction, crashing);
         if (same && !crashing) {
           for (const o of npcs) if (o !== n && o.crashAge < 0 && o.lane === n.lane && o.s > n.s && o.s - n.s < 14) target = Math.min(target, o.v);
           const ahead = ps - n.s;
