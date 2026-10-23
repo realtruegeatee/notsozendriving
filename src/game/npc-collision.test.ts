@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { carContact } from "./multiplayer-math";
-import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact, STUN_FOR } from "./npc-collision";
+import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact, crashVisible, STUN_FOR } from "./npc-collision";
 import type { CollisionNpc } from "./npc-collision";
 import { LANE, groundY, roadX, roadXd } from "./road";
 import { createCrashMotion, stepCrashMotion } from "./crash-physics";
