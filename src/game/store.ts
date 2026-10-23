@@ -13,6 +13,18 @@ export const game = {
   shake: 0,
 };
 
+// Player-selectable cars (files in public/models).
+export const CARS = [
+  { id: "sedan-sports", label: "Sport" },
+  { id: "sedan", label: "Sedan" },
+  { id: "hatchback-sports", label: "Hatch" },
+  { id: "suv", label: "SUV" },
+  { id: "taxi", label: "Taxi" },
+  { id: "van", label: "Van" },
+  { id: "truck", label: "Truck" },
+] as const;
+export type CarId = (typeof CARS)[number]["id"];
+
 export const input = {
   throttle: 0,
   brake: 0,

@@ -3,7 +3,8 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { LANE, ROAD_HALF, roadX, roadXd, roadY, roadYd } from "./road";
-import { FEEL, game, hudEls, input } from "./store";
+import { CARS, FEEL, game, hudEls, input } from "./store";
+import type { CarId } from "./store";
 
 const MODELS = ["sedan", "suv", "hatchback-sports", "taxi", "van", "truck", "sedan-sports"].map((m) => `/models/${m}.glb`);
 MODELS.forEach((m) => useGLTF.preload(m));
@@ -54,7 +55,7 @@ const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
 type Npc = { s: number; lane: number; v: number; base: number; model: string };
 
-export function Traffic() {
+export function Traffic({ car }: { car: CarId }) {
   const npcs = useMemo<Npc[]>(() => {
     const arr: Npc[] = [];
     for (let i = 0; i < 10; i++) {
@@ -189,7 +190,7 @@ export function Traffic() {
     <>
       <group ref={player}>
         <group ref={body}>
-          <CarModel url="/models/sedan-sports.glb" wheels={wheels} />
+          <CarModel key={car} url={`/models/${CARS.some((c) => c.id === car) ? car : "sedan-sports"}.glb`} wheels={wheels} />
         </group>
         <primitive object={spotTarget} position={[0, 0, -25]} />
         <spotLight ref={spot} position={[0, 0.9, -2]} target={spotTarget} angle={0.55} penumbra={0.7} distance={70} decay={1.2} color="#fff1d0" />
