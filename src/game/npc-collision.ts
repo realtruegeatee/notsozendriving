@@ -91,7 +91,7 @@ export function resolveNpcCollision(a: CollisionNpc, b: CollisionNpc, allowWreck
   a.impactOffset += pa.x + push.x / 2 - roadX(-a.s) - npcOffset(a);
   b.impactOffset += pb.x - push.x / 2 - roadX(-b.s) - npcOffset(b);
   if (freshImpact) {
-    if (bothDriving) {
+    if (bothDriving && allowWreck) {
       const survivor = victim === a ? b : a;
       victim.crashOrigin = npcOffset(victim);
       victim.crashSide = Math.sign(victim.crashOrigin) || Math.sign(victim.lane) || 1;
