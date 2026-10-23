@@ -182,6 +182,10 @@ body { font-family: var(--font-body); overscroll-behavior: none; }
 .zen-num { font-size: 1.5rem; font-weight: 600; min-width: 2.2ch; text-align: right; }
 .zen-unit { font-size: 0.65rem; color: var(--ink-soft); text-transform: uppercase; margin-right: 6px; }
 .zen-actions { display: flex; }
+.zen-recording { position: relative; display: flex; pointer-events: auto; }
+.zen-recording .zen-icon[data-recording="true"] { color: var(--brake); }
+.zen-recording-label { position: absolute; top: 44px; left: 0; font-size: 0.65rem; font-weight: 700; color: var(--brake); background: var(--paper); padding: 1px 4px; border: 1px solid var(--ink); }
+.zen-recording-error { position: fixed; top: 110px; right: 12px; max-width: min(280px, calc(100vw - 24px)); padding: 10px; font-size: 0.8rem; }
 .zen-icon { width: 40px; height: 40px; display: grid; place-items: center; }
 .zen-icon + .zen-icon { border-left-width: 0; }
 .zen-icon[data-on="true"] { background: var(--ink); color: var(--paper); }
