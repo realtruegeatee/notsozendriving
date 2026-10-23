@@ -72,9 +72,9 @@ export function Traffic() {
   const spotTarget = useMemo(() => new THREE.Object3D(), []);
   const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false });
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
-  const sun = useThree((s) => s.scene.getObjectByName("sun")) as THREE.DirectionalLight | undefined;
 
-  useFrame((_, raw) => {
+  useFrame((state, raw) => {
+    const sun = state.scene.getObjectByName("sun") as THREE.DirectionalLight | undefined;
     const dt = Math.min(raw, 0.05);
     const S = st.current;
     if (!S.init) {
@@ -140,7 +140,8 @@ export function Traffic() {
         // gentle bump
         if (Math.abs(n.s - ps) < CAR_LEN && Math.abs(pLat - n.lane) < 1.9) {
           game.speed *= same ? 0.6 : 0.3;
-          game.z = -(n.s + (same ? -1 : 1) * CAR_LEN * (n.s > ps ? 1 : -1)) ;
+          if (n.s > ps) game.z = -(n.s - CAR_LEN);
+          else n.s = ps - CAR_LEN;
           game.shake = 0.5;
         }
       }
