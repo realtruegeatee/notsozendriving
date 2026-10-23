@@ -182,8 +182,8 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
       input.keys[e.key.toLowerCase()] = true;
       if (e.key === "n") setNight(!game.night);
       if (e.key === "v") setView((v) => (v === "chase" ? "cockpit" : "chase"));
-      if (!e.repeat && e.code === "KeyH") horn();
-      if (!e.repeat && e.code === "KeyF") flashLights();
+      if (!e.repeat && e.code === "KeyX") horn();
+      if (!e.repeat && e.code === "KeyT") flashLights();
     };
     const up = (e: KeyboardEvent) => { input.keys[e.key.toLowerCase()] = false; };
     window.addEventListener("keydown", down);
@@ -215,7 +215,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
           <CarPicker car={car} setCar={pickCar} />
           <LayoutPicker layout={layout} setLayout={setLayout} />
           <button className="zen-start" onClick={start}>Start driving</button>
-          <p className="zen-hint">Keyboard: WASD or arrows, N day/night, V camera view.</p>
+          <p className="zen-hint">Keyboard: WASD or arrows, N day/night, V camera view, X horn, T flash.</p>
         </div>
       </div>
     );
@@ -223,8 +223,8 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
 
   const signals = (
     <div className="zen-signals">
-      <Button variant="ghost" size="icon" className="zen-panel zen-icon" aria-label="Flash headlights" title="Flash headlights" onClick={flashLights}><Lamp size={18} /></Button>
-      <Button variant="ghost" size="icon" className="zen-panel zen-icon" aria-label="Horn" title="Horn" onClick={horn}><Megaphone size={18} /></Button>
+      <Button variant="ghost" size="icon" className="zen-panel zen-icon" aria-label="Flash headlights" title="Flash headlights (T)" onClick={flashLights}><Lamp size={18} /></Button>
+      <Button variant="ghost" size="icon" className="zen-panel zen-icon" aria-label="Horn" title="Horn (X)" onClick={horn}><Megaphone size={18} /></Button>
     </div>
   );
   const pedals = (
