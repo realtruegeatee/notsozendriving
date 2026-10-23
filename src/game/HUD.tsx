@@ -167,8 +167,8 @@ function DesktopPicker() {
     <>
       <p className="zen-label">Desktop app</p>
       <div className="zen-seg">
-        <a href={windowsAsset.url} download="zen-drive-windows.zip"><MonitorDownload size={16} />Windows</a>
-        <a href={linuxAsset.url} download="zen-drive-linux.tar.gz"><MonitorDownload size={16} />Linux</a>
+        <a href={windowsAsset.url} download="zen-drive-windows.zip"><MonitorDown size={16} />Windows</a>
+        <a href={linuxAsset.url} download="zen-drive-linux.tar.gz"><MonitorDown size={16} />Linux</a>
       </div>
     </>
   );
