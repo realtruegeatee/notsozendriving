@@ -41,3 +41,6 @@
 - [x] Player car pushes other cars on contact instead of only losing speed
 - [x] Max speed 300 km/h after 10 km
 - [x] Better first-person (cockpit) view
+- [ ] Dashcam view showing the car's front
+- [ ] AI aggressiveness selector
+- [ ] Fix radio on the website
