@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { Traffic, headMat, tailMat } from "./Cars";
 import { World, lampGlowMat, lampHeadMat } from "./World";
 import { game } from "./store";
+import type { CarId } from "./store";
 
 const PALETTE = {
   day: { top: "#7fb0d6", horizon: "#f3dcc0", fog: "#ecd9c0", fogFar: 330, amb: 0.55, sun: 2.2, sunColor: "#fff0d8" },
@@ -69,14 +70,14 @@ function Atmosphere({ night }: { night: boolean }) {
   );
 }
 
-export function Game({ night }: { night: boolean }) {
+export function Game({ night, car }: { night: boolean; car: CarId }) {
   return (
     <Canvas shadows dpr={[1, 1.75]} camera={{ fov: 60, near: 0.1, far: 600, position: [0, 3, 8] }} gl={{ antialias: true }}>
       <SkyDome night={night} />
       <Atmosphere night={night} />
       <Suspense fallback={null}>
         <World />
-        <Traffic />
+        <Traffic car={car} />
       </Suspense>
     </Canvas>
   );

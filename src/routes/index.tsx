@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Game } from "../game/Game";
 import { HUD } from "../game/HUD";
+import { CARS } from "../game/store";
+import type { CarId } from "../game/store";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -20,10 +22,14 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [night, setNight] = useState(false);
+  const [car, setCar] = useState<CarId>(() => {
+    const saved = localStorage.getItem("zen-car") as CarId | null;
+    return saved && CARS.some((c) => c.id === saved) ? saved : "sedan-sports";
+  });
   return (
     <div className="fixed inset-0 overflow-hidden bg-background">
-      <Game night={night} />
-      <HUD night={night} setNight={setNight} />
+      <Game night={night} car={car} />
+      <HUD night={night} setNight={setNight} car={car} setCar={setCar} />
     </div>
   );
 }
