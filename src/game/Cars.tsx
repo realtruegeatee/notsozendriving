@@ -14,7 +14,7 @@ import type { Passing } from "./autodrive";
 import { flashLights, horn } from "./signals";
 import { chooseSporadicEvent, chooseTrafficReaction, npcTargetSpeed, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
-import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact } from "./npc-collision";
+import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact, crashVisible } from "./npc-collision";
 import { canDriveAgain } from "./crash-physics";
 import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import type { DrivingNpc } from "./npc-driving";
@@ -291,7 +291,10 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           if (!n.passing && n.reactionLeft <= 0 && (n.recoveryLeft ?? 0) <= 0 && shouldActSporadic(Math.random(), dt)) {
             const mood = chooseSporadicEvent(Math.random());
             if (mood === "wander") { n.wander = (Math.random() - 0.5) * 2.6; n.wanderLeft = 1.5 + Math.random() * 2; }
-            else if (mood === "crash") { n.reaction = "crash"; n.reactionLeft = 7; n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false; }
+            else if (mood === "crash") {
+              // Out of sight, out of mind: no crashes the player cannot see.
+              if (crashVisible(ps, n)) { n.reaction = "crash"; n.reactionLeft = 7; n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false; }
+            }
             else { n.reaction = mood; n.reactionLeft = 2 + Math.random() * 3; }
           }
           const plan = n.recoveryLeft > 0 ? { passing: false, passOffset: 0, speed: Math.max(6, n.base * 0.7), swerve: false } : plans[i];
@@ -305,7 +308,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           target = plan.speed;
           if (!plan.swerve) delete n.dodged;
           if (plan.swerve && n.dodged === undefined) n.dodged = !shouldSwerveForPass(Math.random());
-          if (plan.swerve && !n.dodged) { n.reaction = "crash"; n.reactionLeft = 7; n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false; }
+          if (plan.swerve && !n.dodged && crashVisible(ps, n)) { n.reaction = "crash"; n.reactionLeft = 7; n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false; }
         }
         if (same && !crashing) {
           const ahead = ps - n.s;
@@ -351,7 +354,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const a = npcs[i], b = npcs[j];
         if (a && b) {
           const aWasWreck = a.crashAge >= 0, bWasWreck = b.crashAge >= 0;
-          resolveNpcCollision(a, b);
+          resolveNpcCollision(a, b, crashVisible(ps, a) || crashVisible(ps, b));
           if ((!aWasWreck && a.shove && a.crashAge >= 0) || (!bWasWreck && b.shove && b.crashAge >= 0)) {
             const aggressor = a.crashAge >= 0 ? b : a;
             aggressor.reaction = null; aggressor.reactionLeft = 0;
