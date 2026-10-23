@@ -35,6 +35,27 @@ export function shouldAutopilotSignal(auto: boolean, speed: number, cooldown: nu
   return auto && speed > 4 && cooldown <= 0 && cars.some((car) => mustSlowFor(playerS, playerLane, speed, car));
 }
 
+export type Aggressor = BlockedCar & { reaction: TrafficReaction | null };
+/** How close, and how fast closing, counts as a road-rage shove into the ditch. */
+export const RUNOFF_RANGE = 22;
+export const RUNOFF_TTC = 4.5;
+/** A car that has stamped on the gas can push a slower car in its lane off the street. */
+export function runsIntoRoadside(aggressor: Aggressor, victim: Aggressor) {
+  if (aggressor.reaction !== "accelerate" || aggressor.crashAge >= 0 || victim.crashAge >= 0) return false;
+  const ahead = victim.s - aggressor.s;
+  if (ahead <= 2 || ahead > RUNOFF_RANGE) return false;
+  if (Math.abs(victim.lane - aggressor.lane) > LANE * 0.7) return false;
+  const closing = aggressor.v - victim.v;
+  return closing > 1 && ahead / closing < RUNOFF_TTC;
+}
+/** The nearest car the aggressor is actually bearing down on. */
+export function pickRunoffVictim(aggressor: Aggressor, cars: readonly Aggressor[]): Aggressor | null {
+  if (aggressor.reaction !== "accelerate") return null;
+  let best: Aggressor | null = null;
+  for (const car of cars) if (car !== aggressor && runsIntoRoadside(aggressor, car) && (!best || car.s < best.s)) best = car;
+  return best;
+}
+
 /** A short skid into the ditch, then a stationary, tilted roadside wreck. */
 export function roadsideCrash(age: number, lane: number) {
   const t = Math.max(0, Math.min(1, age / 1.3));

@@ -8,7 +8,7 @@ import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
 import { planAutodrive } from "./autodrive";
 import { flashLights, horn } from "./signals";
-import { chooseTrafficReaction, reactionSpeed, roadsideCrash, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
+import { chooseTrafficReaction, pickRunoffVictim, reactionSpeed, roadsideCrash, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
 import { npcOffset, resolveNpcCollision } from "./npc-collision";
 
@@ -219,6 +219,13 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       for (let i = 0; i < npcs.length; i++) for (let j = i + 1; j < npcs.length; j++) {
         const a = npcs[i], b = npcs[j];
         if (a && b) resolveNpcCollision(a, b);
+      }
+      // Road rage: a car that has sped up can run the slower car in front of it into the ditch.
+      for (const a of npcs) {
+        const victim = pickRunoffVictim(a, npcs);
+        if (!victim) continue;
+        victim.crashAge = 0; victim.reaction = null; victim.reactionLeft = 0;
+        a.reaction = null; a.reactionLeft = 0; // one shove per burst of speed
       }
     }
     npcs.forEach((n, i) => {
