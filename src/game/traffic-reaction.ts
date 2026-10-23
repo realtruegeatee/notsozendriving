@@ -1,4 +1,4 @@
-import { LANE, ROAD_HALF } from "./road";
+import { LANE } from "./road";
 
 export type TrafficReaction = "crash" | "accelerate" | "brake";
 export type ReactingCar = { s: number; lane: number; crashAge: number; reactionLeft?: number };
