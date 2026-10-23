@@ -173,7 +173,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       if (auto) {
         const cars = npcs.map((n) => ({ z: -n.s, lane: npcOffset(n), speed: n.v, same: n.lane > 0 }));
         for (const peer of net.positions.values()) if (now - peer.at < STALE_MS) cars.push({ z: peer.z, lane: peer.x - roadX(peer.z), speed: 20, same: Math.abs(peer.yaw - game.yaw) < Math.PI / 2 });
-        const plan = planAutodrive(game.z, game.speed, S.passing, cars, S.blockedFor, dt);
+        const plan = planAutodrive(game.z, game.speed, S.passing, cars, S.blockedFor, dt, game.x - roadX(game.z));
         S.passing = plan.passing;
         S.blockedFor = plan.blockedFor;
         const lookZ = game.z - Math.max(12, game.speed * 0.6);

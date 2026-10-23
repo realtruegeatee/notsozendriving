@@ -60,3 +60,35 @@ it("slows down when both passing routes are occupied including a right-side wrec
   expect(result.passing).toBe(false);
   expect(result.targetSpeed).toBeLessThan(20);
 });
+it("returns immediately after clearing the overtaken car even with distant traffic ahead", () => {
+  const result = planAutodrive(-22, 28, "right", [
+    { z: -15, lane: LANE, speed: 15, same: true },
+    { z: -75, lane: LANE, speed: 15, same: true },
+  ]);
+  expect(result.lane).toBe(LANE);
+  expect(result.passing).toBe(false);
+});
+it("does not cut back into a car alongside or a fast car approaching from behind", () => {
+  for (const car of [
+    { z: 3, lane: LANE, speed: 15, same: true },
+    { z: 12, lane: LANE, speed: 40, same: true },
+  ]) {
+    expect(planAutodrive(0, 25, "right", [car]).passing).toBe("right");
+  }
+});
+it("stays right and brakes for a wreck rather than merging into an adjacent car", () => {
+  const result = planAutodrive(0, 25, "right", [
+    { z: 0, lane: LANE, speed: 15, same: true },
+    { z: -7, lane: RIGHT_PASS, speed: 0, same: true },
+  ]);
+  expect(result.lane).toBe(RIGHT_PASS);
+  expect(result.targetSpeed).toBe(0);
+});
+it("checks approaching oncoming cars before choosing the left passing lane", () => {
+  const result = planAutodrive(0, 40, false, [
+    { z: -25, lane: LANE, speed: 15, same: true },
+    { z: -110, lane: -LANE, speed: 30, same: false },
+  ]);
+  expect(result.lane).toBe(LANE);
+  expect(result.targetSpeed).toBeLessThan(40);
+});

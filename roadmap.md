@@ -16,3 +16,4 @@
 - [x] Enable and verify collisions between NPC cars
 - [x] Enable and verify right-side autopilot overtaking
 - [x] Delay right-side overtaking until autopilot loses patience behind slower traffic
+- [ ] Return immediately after right passes when clear and improve autopilot collision avoidance
