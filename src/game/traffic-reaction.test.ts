@@ -22,6 +22,10 @@ it("accelerating NPCs speed up and braking NPCs slow down", () => {
   expect(reactionSpeed(16, "brake")).toBeLessThan(16);
   expect(reactionSpeed(16, "crash")).toBe(0);
   expect(reactionSpeed(16, null)).toBe(16);
+  // A crashing car rolls to a stop even when its reaction flag was cleared (run-off victims).
+  expect(npcTargetSpeed(16, null, true)).toBe(0);
+  expect(npcTargetSpeed(16, "accelerate", true)).toBe(0);
+  expect(npcTargetSpeed(16, null, false)).toBe(16);
 });
 it("an NPC can finish its reaction before responding again", () => {
   expect(threatenedTraffic(0, { ...car, reactionLeft: 4 })).toBe(false);
