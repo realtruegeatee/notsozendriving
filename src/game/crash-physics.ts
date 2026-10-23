@@ -44,7 +44,7 @@ export function stepCrashMotion(motion: CrashMotion, dt: number): number {
     motion.roll += motion.rollVelocity * h;
     motion.vertical -= 9.81 * h;
     motion.bounce += motion.vertical * h;
-    if (motion.bounce < 0) { motion.bounce = 0; motion.vertical = Math.abs(motion.vertical) > 0.5 ? -motion.vertical * 0.22 : 0; }
+    if (motion.bounce < 0) { motion.bounce = 0; motion.vertical = Math.abs(motion.vertical) > 0.5 ? -motion.vertical * 0.38 : 0; }
     if (motion.speed === 0 && motion.lateral === 0 && Math.abs(motion.spin) < 0.001) motion.spin = 0;
   }
   return distance;
