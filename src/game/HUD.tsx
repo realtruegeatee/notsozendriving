@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Moon, Pause, Play, Sun, Gauge } from "lucide-react";
-import { game, hudEls, input } from "./store";
+import { CARS, game, hudEls, input } from "./store";
+import type { CarId } from "./store";
 
 export type Layout = "wheel-left" | "wheel-right" | "slider";
 const LAYOUTS: { id: Layout; label: string; mini: React.ReactNode }[] = [
@@ -119,6 +120,21 @@ function LayoutPicker({ layout, setLayout }: { layout: Layout; setLayout: (l: La
   );
 }
 
+function CarPicker({ car, setCar }: { car: CarId; setCar: (c: CarId) => void }) {
+  return (
+    <>
+      <p className="zen-label">Your car</p>
+      <div className="zen-seg zen-cars">
+        {CARS.map((c) => (
+          <button key={c.id} data-on={car === c.id} onClick={() => setCar(c.id)}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function TimePicker({ night, setNight }: { night: boolean; setNight: (n: boolean) => void }) {
   return (
     <>
@@ -131,7 +147,7 @@ function TimePicker({ night, setNight }: { night: boolean; setNight: (n: boolean
   );
 }
 
-export function HUD({ night, setNight }: { night: boolean; setNight: (n: boolean) => void }) {
+export function HUD({ night, setNight, car, setCar }: { night: boolean; setNight: (n: boolean) => void; car: CarId; setCar: (c: CarId) => void }) {
   const [started, setStarted] = useState(false);
   const [paused, setPaused] = useState(false);
   const [cruise, setCruise] = useState(true);
@@ -142,6 +158,7 @@ export function HUD({ night, setNight }: { night: boolean; setNight: (n: boolean
     if (saved && LAYOUTS.some((l) => l.id === saved)) setLayoutState(saved);
   }, []);
   const setLayout = (l: Layout) => { setLayoutState(l); localStorage.setItem("zen-layout", l); };
+  const pickCar = (c: CarId) => { setCar(c); localStorage.setItem("zen-car", c); };
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -164,6 +181,7 @@ export function HUD({ night, setNight }: { night: boolean; setNight: (n: boolean
           <h1 className="zen-title">Zen Drive</h1>
           <p className="zen-sub">No timer, no finish line. Just keep driving.</p>
           <TimePicker night={night} setNight={setNight} />
+          <CarPicker car={car} setCar={pickCar} />
           <LayoutPicker layout={layout} setLayout={setLayout} />
           <button className="zen-start" onClick={() => { game.started = true; setStarted(true); }}>Start driving</button>
           <p className="zen-hint">Keyboard: WASD or arrows, N switches day and night.</p>
@@ -197,6 +215,7 @@ export function HUD({ night, setNight }: { night: boolean; setNight: (n: boolean
           <div className="zen-card">
             <h2 className="zen-title">Paused</h2>
             <TimePicker night={night} setNight={setNight} />
+            <CarPicker car={car} setCar={pickCar} />
             <LayoutPicker layout={layout} setLayout={setLayout} />
             <button className="zen-start" onClick={() => setPaused(false)}>Continue</button>
           </div>
