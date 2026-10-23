@@ -26,7 +26,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   });
   const leftBlocked = blocked(-LANE), rightBlocked = blocked(RIGHT_PASS);
   const mergeSafe = !cars.some((c) => {
-    if (!overlaps(c, LANE) && !overlaps(c, LANE, 0.8)) return false;
+    if (!overlaps(c, LANE) && !overlaps(c, LANE, 1.2)) return false;
     const gap = z - c.z;
     const aheadGap = c.same ? 8 + Math.max(0, speed - c.speed) * 0.6 : Math.max(90, (speed + c.speed) * 3);
     const behindGap = 6 + (c.same ? Math.max(0, c.speed - speed) * 0.8 : 0);
@@ -78,7 +78,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
     const inPath = Math.max(c.lane, futureLane) > Math.min(currentLane, lane) - 1.9 && Math.min(c.lane, futureLane) < Math.max(currentLane, lane) + 1.9;
     // Accelerate decisively once clear, not while the rear bumper is still
     // following the blocker during a real (non-instantaneous) lane change.
-    if (c.same && gap >= 0 && overlaps(c, currentLane) && Math.abs(lane - currentLane) > 0.5) targetSpeed = Math.min(targetSpeed, follow(c.speed, gap, 5));
+    if (c.same && gap >= 0 && gap < Math.max(22, speed * 0.6) && overlaps(c, currentLane) && Math.abs(lane - currentLane) > 0.5) targetSpeed = Math.min(targetSpeed, follow(c.speed, gap, 5));
     if (gap < 0 || !(inTarget || (inPath && gap < 10))) continue;
     if (c.same) targetSpeed = Math.min(targetSpeed, follow(c.speed, gap, 7));
     else if (gap < Math.max(18, (speed + c.speed) * 0.9)) targetSpeed = Math.min(targetSpeed, gap < 25 ? 0 : CREEP);

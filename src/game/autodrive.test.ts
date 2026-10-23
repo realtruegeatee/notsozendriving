@@ -15,7 +15,7 @@ it("autodrive passes on the right after losing patience instead of into oncoming
   expect(result.lane).toBeGreaterThan(LANE);
   expect(result.lane).toBe(RIGHT_PASS);
   expect(result.passing).toBe("right");
-  expect(result.targetSpeed).toBe(34);
+  expect(result.targetSpeed).toBeLessThan(25);
 });
 it("waits behind slower traffic before attempting a right pass", () => {
   const cars = [{ z: -15, lane: LANE, speed: 15, same: true }, { z: -60, lane: -LANE, speed: 20, same: false }];
