@@ -92,3 +92,10 @@ it("checks approaching oncoming cars before choosing the left passing lane", () 
   expect(result.lane).toBe(LANE);
   expect(result.targetSpeed).toBeLessThan(40);
 });
+it("autopilot squeezes into a gap 40 m behind a car in the passing lane", () => {
+  const result = planAutodrive(0, 25, false, [
+    { z: -15, lane: LANE, speed: 15, same: true },
+    { z: -40, lane: -LANE, speed: 22, same: true },
+  ]);
+  expect(result.passing).toBe(true);
+});
