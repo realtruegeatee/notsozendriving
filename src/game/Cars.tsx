@@ -2,11 +2,15 @@ import { useGLTF } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { LANE, ROAD_HALF, roadX, roadXd, roadY, roadYd } from "./road";
+import { groundY, LANE, ROAD_HALF, roadX, roadXd, roadY, roadYd } from "./road";
 import { CARS, FEEL, game, hudEls, input, net } from "./store";
 import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
 import { planAutodrive } from "./autodrive";
+import { flashLights, horn } from "./signals";
+import { chooseTrafficReaction, reactionSpeed, roadsideCrash, shouldAutopilotSignal, threatenedTraffic } from "./traffic-reaction";
+import type { TrafficReaction } from "./traffic-reaction";
+import { npcOffset, resolveNpcCollision } from "./npc-collision";
 
 const MODELS = ["sedan", "suv", "hatchback-sports", "taxi", "van", "truck", "sedan-sports"].map((m) => `/models/${m}.glb`);
 MODELS.forEach((m) => useGLTF.preload(m));
@@ -61,7 +65,7 @@ export function CarModel({ url, wheels, driverId }: { url: string; wheels?: Reac
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; model: string };
+type Npc = { s: number; lane: number; v: number; base: number; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number };
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
   const npcs = useMemo<Npc[]>(() => {
@@ -70,7 +74,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     for (let i = 0; i < 10; i++) {
       const same = i < 6;
       const base = same ? 12 + Math.random() * 7 : 17 + Math.random() * 6;
-      arr.push({ s: 40 + i * 55 + Math.random() * 30, lane: same ? LANE : -LANE, v: base, base, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
+      arr.push({ s: 40 + i * 55 + Math.random() * 30, lane: same ? LANE : -LANE, v: base, base, crashAge: -1, reaction: null, reactionLeft: 0, impactOffset: 0, contactLeft: 0, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
     }
     return arr;
   }, [traffic]);
@@ -80,7 +84,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
   const wheels = useRef<THREE.Object3D[]>([]);
   const spot = useRef<THREE.SpotLight>(null);
   const spotTarget = useMemo(() => new THREE.Object3D(), []);
-  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false });
+  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false, signalCooldown: 0 });
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
 
   useFrame((state, raw) => {
@@ -114,8 +118,16 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       let brk = Math.max(input.brake, k["s"] || k["arrowdown"] ? 1 : 0);
       let steerIn = clamp(input.steer + (k["d"] || k["arrowright"] ? 1 : 0) - (k["a"] || k["arrowleft"] ? 1 : 0), -1, 1);
       const auto = game.cruise && !thr && !brk && Math.abs(steerIn) < 0.05;
+      S.signalCooldown = Math.max(0, S.signalCooldown - dt);
+      if (shouldAutopilotSignal(auto, game.speed, S.signalCooldown, ps, npcs)) {
+        horn(); flashLights(); S.signalCooldown = 2.2;
+        for (const n of npcs) if (threatenedTraffic(ps, n)) {
+          n.reaction = chooseTrafficReaction(Math.random()); n.reactionLeft = 7;
+          if (n.reaction === "crash") n.crashAge = 0;
+        }
+      }
       if (auto) {
-        const cars = npcs.map((n) => ({ z: -n.s, lane: n.lane, speed: n.v, same: n.lane > 0 }));
+        const cars = npcs.filter((n) => n.crashAge < 0 || Math.abs(roadsideCrash(n.crashAge, n.lane).offset) < ROAD_HALF).map((n) => ({ z: -n.s, lane: n.crashAge < 0 ? n.lane : roadsideCrash(n.crashAge, n.lane).offset, speed: n.v, same: n.lane > 0 }));
         for (const peer of net.positions.values()) if (now - peer.at < STALE_MS) cars.push({ z: peer.z, lane: peer.x - roadX(peer.z), speed: 20, same: Math.abs(peer.yaw - game.yaw) < Math.PI / 2 });
         const plan = planAutodrive(game.z, game.speed, S.passing, cars);
         S.passing = plan.passing;
@@ -166,36 +178,61 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
 
     // NPCs
     const pLat = game.x - roadX(game.z);
-    npcs.forEach((n, i) => {
+    npcs.forEach((n) => {
       const same = n.lane > 0;
       if (active) {
-        let target = n.base;
-        if (same) {
-          for (const o of npcs) if (o !== n && o.lane === n.lane && o.s > n.s && o.s - n.s < 14) target = Math.min(target, o.v);
+        n.contactLeft = Math.max(0, n.contactLeft - dt);
+        n.impactOffset *= Math.exp(-0.8 * dt);
+        const crashing = n.crashAge >= 0;
+        if (crashing) n.crashAge += dt;
+        n.reactionLeft = Math.max(0, n.reactionLeft - dt);
+        if (!crashing && n.reactionLeft === 0) n.reaction = null;
+        let target = reactionSpeed(n.base, n.reaction);
+        if (same && !crashing) {
+          for (const o of npcs) if (o !== n && o.crashAge < 0 && o.lane === n.lane && o.s > n.s && o.s - n.s < 14) target = Math.min(target, o.v);
           const ahead = ps - n.s;
           if (ahead > 0 && ahead < 10 && Math.abs(pLat - n.lane) < 2.2) target = Math.min(target, game.speed);
         }
-        n.v += (target - n.v) * damp(2, dt);
+        n.v += (target - n.v) * damp(crashing || n.reaction === "brake" ? 3.5 : 2, dt);
+        if (crashing && n.v < 0.05) n.v = 0;
         n.s += (same ? 1 : -1) * n.v * dt;
         const ds = n.s - ps;
         if (ds < -50 || ds > 520) {
           n.s = ps + 180 + Math.random() * 320;
           n.base = same ? 12 + Math.random() * 7 : 17 + Math.random() * 6;
           n.v = n.base;
+          n.crashAge = -1;
+          n.reaction = null; n.reactionLeft = 0;
+          n.impactOffset = 0; n.contactLeft = 0;
         }
         // gentle bump
-        if (Math.abs(n.s - ps) < CAR_LEN && Math.abs(pLat - n.lane) < 1.9) {
+        const offset = npcOffset(n);
+        if (Math.abs(n.s - ps) < CAR_LEN && Math.abs(pLat - offset) < 1.9) {
           game.speed *= same ? 0.6 : 0.3;
           if (n.s > ps) game.z = -(n.s - CAR_LEN);
           else n.s = ps - CAR_LEN;
           game.shake = 0.5;
         }
       }
+    });
+    if (active) {
+      for (let i = 0; i < npcs.length; i++) for (let j = i + 1; j < npcs.length; j++) {
+        const a = npcs[i], b = npcs[j];
+        if (a && b) resolveNpcCollision(a, b);
+      }
+    }
+    npcs.forEach((n, i) => {
+      const same = n.lane > 0;
       const g = refs.current[i];
       if (g) {
         const z = -n.s;
-        g.position.set(roadX(z) + n.lane, roadY(z), z);
-        g.rotation.set(Math.atan(-roadYd(z)) * (same ? 1 : -1), Math.atan(roadXd(z)) + (same ? 0 : Math.PI), 0, "YXZ");
+        const crash = n.crashAge < 0 ? null : roadsideCrash(n.crashAge, n.lane);
+        const offset = npcOffset(n);
+        g.position.set(roadX(z) + offset, (crash ? groundY(z, offset) + 0.03 : roadY(z)) + (crash?.bounce ?? 0), z);
+        g.rotation.set(Math.atan(-roadYd(z)) * (same ? 1 : -1), Math.atan(roadXd(z)) + (same ? 0 : Math.PI) + (crash?.yaw ?? 0), crash?.roll ?? 0, "YXZ");
+        g.userData["reaction"] = n.reaction;
+        g.userData["speed"] = n.v;
+        g.userData["baseSpeed"] = n.base;
       }
     });
 
@@ -251,7 +288,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         <spotLight ref={spot} position={[0, 0.9, -2]} target={spotTarget} angle={0.55} penumbra={0.7} distance={70} decay={1.2} color="#fff1d0" />
       </group>
       {npcs.map((n, i) => (
-        <group key={i} ref={(el) => { refs.current[i] = el; }}>
+        <group key={i} name={`traffic-${i}`} ref={(el) => { refs.current[i] = el; }}>
           <CarModel url={n.model} />
         </group>
       ))}
