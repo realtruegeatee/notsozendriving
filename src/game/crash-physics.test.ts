@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { createCrashMotion, createSwerveMotion, stepCrashMotion } from "./crash-physics";
+import { canDriveAgain, createCrashMotion, createSwerveMotion, stepCrashMotion } from "./crash-physics";
 import { LANE, ROAD_HALF } from "./road";
 
 it("avoidance is an impulsive sideways kick, not a steered path", () => {
@@ -68,4 +68,18 @@ it("crash movement remains consistent across frame rates", () => {
   for (let i = 0; i < 200; i++) stepCrashMotion(b, 0.05);
   expect(a.offset).toBeCloseTo(b.offset, 5);
   expect(a.yaw).toBeCloseTo(b.yaw, 5);
+});
+
+it("only wrecks at rest on the road can drive again", () => {
+  const onRoad = createCrashMotion(LANE, 20, 1, 1);
+  for (let i = 0; i < 1200; i++) stepCrashMotion(onRoad, 1 / 60);
+  // A hard crash ends up off the road: it stays a wreck.
+  expect(canDriveAgain(onRoad)).toBe(false);
+  const gentle = createCrashMotion(0, 8, 1, 0.3);
+  for (let i = 0; i < 1200; i++) stepCrashMotion(gentle, 1 / 60);
+  expect(Math.abs(gentle.offset)).toBeLessThanOrEqual(ROAD_HALF);
+  expect(canDriveAgain(gentle)).toBe(true);
+  // Still moving: not yet.
+  const moving = createCrashMotion(0, 20, 1, 0.3);
+  expect(canDriveAgain(moving)).toBe(false);
 });
