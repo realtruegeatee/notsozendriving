@@ -103,3 +103,22 @@ export function stepUnstick(stuckFor: number, reverseLeft: number, speed: number
   if (stuck >= STUCK_AFTER) return { stuckFor: 0, reverseLeft: REVERSE_FOR, reversing: true, retryPass: false };
   return { stuckFor: stuck, reverseLeft: 0, reversing: false, retryPass: false };
 }
+
+// Impatience ramming: after RAM_AFTER s held up by a car ahead in its lane, autopilot rams it until clear.
+export const RAM_AFTER = 3;
+type RamCar = { z: number; lane: number; same: boolean };
+export function ramTarget(z: number, lat: number, cars: RamCar[]) {
+  let best: RamCar | null = null;
+  for (const c of cars) {
+    const ahead = z - c.z;
+    if (!c.same || ahead < 0 || ahead > 30 || Math.abs(c.lane - lat) > 2.5) continue;
+    if (!best || c.z > best.z) best = c;
+  }
+  return best;
+}
+export function stepImpatience(impatience: number, ramming: boolean, heldUp: boolean, hasTarget: boolean, dt: number) {
+  if (!hasTarget) return { impatience: 0, ramming: false };
+  if (ramming) return { impatience, ramming: true };
+  const next = heldUp ? impatience + dt : Math.max(0, impatience - dt * 0.5);
+  return next >= RAM_AFTER ? { impatience: 0, ramming: true } : { impatience: next, ramming: false };
+}
