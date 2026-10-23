@@ -30,7 +30,8 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
     const gap = z - c.z;
     const aheadGap = c.same ? 8 + Math.max(0, speed - c.speed) * 0.6 : Math.max(90, (speed + c.speed) * 3);
     const behindGap = 6 + (c.same ? Math.max(0, c.speed - speed) * 0.8 : 0);
-    return gap > -behindGap && gap < aheadGap;
+    const futureGap = gap - closing(c) * 1.2;
+    return (gap > -behindGap && gap < aheadGap) || (futureGap > -behindGap && futureGap < aheadGap);
   });
   // Patience only runs out while following nearby slow traffic, not on approach.
   const waiting = !passing && blocker && z - blocker.z >= 0 && z - blocker.z <= 40 && leftBlocked;
@@ -68,7 +69,6 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
     Math.max(gap > keep + 3 ? CREEP : 0, Math.min(carSpeed + (gap - keep) * 0.7, Math.sqrt(carSpeed * carSpeed + 2 * 7 * Math.max(0, gap - keep))));
   let targetSpeed = maxSpeed;
   if (!next && blocker) targetSpeed = Math.min(targetSpeed, follow(blocker.speed, z - blocker.z, 9));
-  if (passing === true && !next && ahead.length > 0) targetSpeed = Math.min(targetSpeed, 16);
   const lane = next === "right" ? RIGHT_PASS : next ? -LANE : LANE;
   // Brake for hazards in the destination lane and close hazards along the lane-change path.
   for (const c of cars) {
