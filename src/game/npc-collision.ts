@@ -7,7 +7,8 @@ import type { Pose } from "./multiplayer-math";
 export type CollisionNpc = { s: number; lane: number; v: number; crashAge: number; impactOffset: number; contactLeft: number; passOffset?: number; crashOrigin?: number; shove?: number; crashSide?: number; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; passing?: boolean; stunLeft?: number };
 /** Seconds a car rammed from behind by the autopilot stays stopped before driving again. */
 export const STUN_FOR = 3;
-export function npcCrash(car: CollisionNpc) { return car.crashMotion ?? roadsideCrash(car.crashAge, car.lane, car.crashOrigin, car.shove, car.crashSide); }
+/** Before the motion store exists (the frame a crash starts), show the car where it was hit. */
+export function npcCrash(car: CollisionNpc) { return car.crashMotion ?? { offset: car.crashOrigin ?? car.lane, yaw: 0, roll: 0, bounce: 0 }; }
 export function npcOffset(car: CollisionNpc) {
   return (car.crashAge < 0 ? car.lane + (car.passOffset ?? 0) : npcCrash(car).offset) + car.impactOffset;
 }
