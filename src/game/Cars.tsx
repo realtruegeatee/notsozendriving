@@ -60,7 +60,7 @@ export function Traffic() {
     for (let i = 0; i < 10; i++) {
       const same = i < 6;
       const base = same ? 12 + Math.random() * 7 : 17 + Math.random() * 6;
-      arr.push({ s: 40 + i * 55 + Math.random() * 30, lane: same ? LANE : -LANE, v: base, base, model: MODELS[i % MODELS.length] });
+      arr.push({ s: 40 + i * 55 + Math.random() * 30, lane: same ? LANE : -LANE, v: base, base, model: MODELS[i % MODELS.length]! });
     }
     return arr;
   }, []);
