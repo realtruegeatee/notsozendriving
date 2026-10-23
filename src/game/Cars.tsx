@@ -14,6 +14,7 @@ import { chooseTrafficReaction, npcTargetSpeed, shouldAutopilotSignal, SIGNAL_GA
 import type { TrafficReaction } from "./traffic-reaction";
 import { npcCrash, npcOffset, resolveNpcCollision } from "./npc-collision";
 import { planNpcDriving, stepNpcLane } from "./npc-driving";
+import type { DrivingNpc } from "./npc-driving";
 
 const MODELS = ["sedan", "suv", "hatchback-sports", "taxi", "van", "truck", "sedan-sports"].map((m) => `/models/${m}.glb`);
 // No useGLTF.preload: a rejected preload is an unhandled error on flaky networks.
@@ -225,9 +226,13 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     // NPCs
     const pLat = game.x - roadX(game.z);
     // Plan from one shared snapshot, so array order cannot change passing decisions.
-    const nearby = npcs.map((n) => ({ ...n, offset: npcOffset(n) }));
-    nearby.push({ ...nearby[0], s: -game.z, lane: LANE, offset: pLat, passOffset: pLat - LANE, v: game.speed, base: game.speed, crashAge: -1, passing: false } as (typeof nearby)[number]);
-    const plans = active ? nearby.slice(0, npcs.length).map((n) => planNpcDriving(n, nearby, npcTargetSpeed(n.base, n.reactionLeft > dt ? n.reaction : null, n.crashAge >= 0))) : [];
+    const playerLane = Math.cos(game.yaw) >= 0 ? LANE : -LANE;
+    const nearby: DrivingNpc[] = npcs.map((n) => ({ ...n, offset: npcOffset(n) }));
+    nearby.push({ s: -game.z, lane: playerLane, offset: pLat, passOffset: pLat - playerLane, v: game.speed, base: game.speed, crashAge: -1, passing: false });
+    const plans = active ? npcs.map((n, i) => {
+      const snapshot = nearby[i];
+      return snapshot ? planNpcDriving(snapshot, nearby, npcTargetSpeed(n.base, n.reactionLeft > dt ? n.reaction : null, n.crashAge >= 0)) : undefined;
+    }) : [];
     npcs.forEach((n, i) => {
       const same = n.lane > 0;
       if (active) {
@@ -267,16 +272,6 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           n.passOffset = 0; n.passing = false; delete n.crashOrigin; n.shove = 0; n.laneVelocity = 0; n.laneRoll = 0;
         }
       }
-      // Contact after NPC pair separation, using the player's current position.
-      for (const n of npcs) {
-        const playerS = -game.z;
-        if (Math.abs(n.s - playerS) < CAR_LEN && Math.abs(game.x - roadX(game.z) - npcOffset(n)) < 1.9) {
-          game.speed *= n.lane > 0 ? 0.6 : 0.3;
-          if (n.s > playerS) game.z = -(n.s - CAR_LEN);
-          else n.s = playerS - CAR_LEN;
-          game.shake = 0.5;
-        }
-      }
     });
     if (active) {
       for (let i = 0; i < npcs.length; i++) for (let j = i + 1; j < npcs.length; j++) {
@@ -288,6 +283,16 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
             const aggressor = a.crashAge >= 0 ? b : a;
             aggressor.reaction = null; aggressor.reactionLeft = 0;
           }
+        }
+      }
+      // Contact after NPC pair separation, using the player's current position.
+      for (const n of npcs) {
+        const playerS = -game.z;
+        if (Math.abs(n.s - playerS) < CAR_LEN && Math.abs(game.x - roadX(game.z) - npcOffset(n)) < 1.9) {
+          game.speed *= n.lane > 0 ? 0.6 : 0.3;
+          if (n.s > playerS) game.z = -(n.s - CAR_LEN);
+          else n.s = playerS - CAR_LEN;
+          game.shake = 0.5;
         }
       }
     }
