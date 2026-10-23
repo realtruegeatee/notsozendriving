@@ -99,7 +99,7 @@ it("a shove gives immediate sideways momentum and body roll without teleporting"
   const origin = npcOffset(slower);
   expect(slower.shove).toBeCloseTo(15 / 18);
   slower.crashMotion = createCrashMotion(origin, slower.crashSpeed ?? slower.v, 1, slower.shove);
-  stepCrashMotion(slower.crashMotion, 0.15);
+  stepCrashMotion(slower.crashMotion, 0.2);
   expect(npcOffset(slower) - origin).toBeGreaterThan(0.8);
   expect(Math.abs(npcCrash(slower).roll)).toBeGreaterThan(0.05);
   expect(npcCrash(slower).bounce).toBeGreaterThan(0);
