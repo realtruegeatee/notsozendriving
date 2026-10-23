@@ -16,6 +16,10 @@ export function createCrashMotion(offset: number, speed: number, side: number, s
     bounce: 0, vertical: strength * 0.8, side: direction, restRoll: direction * 0.13 };
 }
 const reduce = (v: number, amount: number) => Math.sign(v) * Math.max(0, Math.abs(v) - amount);
+/** A wreck that stopped moving but ended up still on the road can drive again. */
+export function canDriveAgain(motion: CrashMotion) {
+  return motion.speed === 0 && motion.lateral === 0 && Math.abs(motion.spin) < 0.001 && Math.abs(motion.offset) <= ROAD_HALF;
+}
 /** Free ragdoll momentum: the wreck slides, spins and tumbles where the impact sent it. Nothing steers it along a path. */
 export function stepCrashMotion(motion: CrashMotion, dt: number): number {
   let distance = 0;
