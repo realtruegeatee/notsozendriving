@@ -16,8 +16,12 @@ function pose(car: CollisionNpc) {
   const z = -car.s, offset = npcOffset(car);
   return { x: roadX(z) + offset, y: groundY(z, offset) + 0.03, z, yaw: Math.atan(roadXd(z)) + (car.lane > 0 ? 0 : Math.PI) + (car.crashAge < 0 ? 0 : npcCrash(car).yaw * Math.sign(car.lane)) };
 }
+/** Relative impact speed between the player and this car, in m/s. */
+export function impactSpeed(playerSpeed: number, car: CollisionNpc) {
+  return car.lane > 0 ? Math.max(0, playerSpeed - car.v) : playerSpeed + car.v;
+}
 /** Only real rear-to-front contact with an active autopilot triggers this avoidance exit. */
-export function resolveAutopilotNpcContact(player: Pose, autopilot: boolean, car: CollisionNpc, lateral = 0) {
+export function resolveAutopilotNpcContact(player: Pose, autopilot: boolean, car: CollisionNpc, lateral = 0, playerSpeed = 0) {
   const npcPose = pose(car);
   const push = carContact(player, npcPose);
   if (!push) return null;
@@ -42,6 +46,25 @@ export function resolveAutopilotNpcContact(player: Pose, autopilot: boolean, car
     const lat = (npcPose.x - player.x) * Math.cos(player.yaw) - (npcPose.z - player.z) * Math.sin(player.yaw);
     const side = Math.abs(lat) > 0.05 ? Math.sign(lat) : Math.sign(npcOffset(car)) || 1;
     car.impactOffset = Math.max(-6, Math.min(6, car.impactOffset + side * 0.25));
+  } else if (car.crashAge < 0 && car.contactLeft <= 0) {
+    // A hard hit from the player launches the car like NPC-on-NPC impacts do:
+    // it tumbles away comically instead of just slowing the player down.
+    const speed = impactSpeed(playerSpeed, car);
+    if (playerSpeed > 9 && speed > 9) {
+      const severity = Math.min(2, Math.max(0.6, speed / 14));
+      const offset = npcOffset(car);
+      const lat = dx * Math.cos(player.yaw) - dz * Math.sin(player.yaw);
+      car.crashOrigin = offset;
+      car.crashSide = Math.abs(lat) > 0.05 ? Math.sign(lat) : Math.sign(offset) || Math.sign(car.lane) || 1;
+      car.impactOffset = 0;
+      car.shove = severity;
+      car.crashSpeed = Math.max(car.v * 0.5, playerSpeed * 0.35);
+      car.crashAge = 0;
+      car.passing = false;
+      car.contactLeft = 0.8;
+      car.crashMotion = createCrashMotion(offset, car.crashSpeed, car.crashSide, severity);
+      car.v = car.crashMotion.speed;
+    }
   }
   return push;
 }

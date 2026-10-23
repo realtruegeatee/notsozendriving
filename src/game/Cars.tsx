@@ -361,12 +361,16 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       // Contact after NPC pair separation, using the player's current position.
       for (const n of npcs) {
         const wasCrashing = n.crashAge >= 0;
-        const push = resolveAutopilotNpcContact({ x: game.x, y: roadY(game.z), z: game.z, yaw: game.yaw }, auto, n, n.laneVelocity);
+        const push = resolveAutopilotNpcContact({ x: game.x, y: roadY(game.z), z: game.z, yaw: game.yaw }, auto, n, n.laneVelocity, game.speed);
         if (push) {
-          if (!wasCrashing && n.crashAge >= 0) {
+          const launched = !wasCrashing && n.crashAge >= 0;
+          if (launched) {
             n.reaction = "crash"; n.reactionLeft = 7; n.passing = false;
           }
-          if (n.lane > 0 && game.speed > n.v && !((n.stunLeft ?? 0) > 0)) {
+          if (launched && n.shove > 0) {
+            // Launched car: the player plows through and barely slows.
+            game.speed *= 0.88;
+          } else if (n.lane > 0 && game.speed > n.v && !((n.stunLeft ?? 0) > 0)) {
             // Push it: hand momentum to the car ahead instead of just stopping dead.
             const share = (game.speed - n.v) * 0.6;
             n.v += share; n.s += Math.min(1.5, share * 0.08);
