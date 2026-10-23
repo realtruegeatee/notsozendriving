@@ -13,32 +13,10 @@ const PALETTE = {
 
 function SkyDome({ night }: { night: boolean }) {
   const ref = useRef<THREE.Group>(null);
-  const mat = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        side: THREE.BackSide,
-        depthWrite: false,
-        fog: false,
-        uniforms: { top: { value: new THREE.Color() }, bottom: { value: new THREE.Color() } },
-        vertexShader: `varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
-        fragmentShader: `uniform vec3 top; uniform vec3 bottom; varying vec3 vP; void main(){ float h = clamp(vP.y*1.6+0.05,0.,1.); gl_FragColor = vec4(mix(bottom, top, pow(h,0.7)),1.);
-#include <colorspace_fragment>
-}`,
-      }),
-    [],
-  );
-  useEffect(() => {
-    const p = night ? PALETTE.night : PALETTE.day;
-    mat.uniforms.top.value.set(p.top);
-    mat.uniforms.bottom.value.set(p.horizon);
-  }, [night, mat]);
   useFrame(({ camera }) => ref.current?.position.copy(camera.position));
   return (
     <group ref={ref}>
-      <mesh material={mat} renderOrder={-1}>
-        <sphereGeometry args={[480, 32, 16]} />
-      </mesh>
-      <mesh position={night ? [-150, 160, -380] : [180, 120, -400]}>
+      <mesh position={night ? [-120, 110, -380] : [160, 80, -400]}>
         <sphereGeometry args={[night ? 10 : 18, 24, 12]} />
         <meshBasicMaterial color={night ? "#f2efe2" : "#fff4d6"} fog={false} toneMapped={false} />
       </mesh>
@@ -53,6 +31,15 @@ function Atmosphere({ night }: { night: boolean }) {
   useEffect(() => {
     game.night = night;
     scene.fog = new THREE.Fog(p.fog, 40, p.fogFar);
+    const c = document.createElement("canvas");
+    c.width = 2; c.height = 256;
+    const g = c.getContext("2d")!;
+    const gr = g.createLinearGradient(0, 0, 0, 256);
+    gr.addColorStop(0, p.top); gr.addColorStop(0.55, p.horizon); gr.addColorStop(1, p.fog);
+    g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    scene.background = tex;
     lampHeadMat.emissiveIntensity = night ? 4 : 0;
     lampGlowMat.opacity = night ? 0.28 : 0;
     headMat.emissiveIntensity = night ? 5 : 0.3;

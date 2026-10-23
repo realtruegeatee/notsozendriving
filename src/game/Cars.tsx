@@ -163,8 +163,8 @@ export function Traffic() {
 
     // camera
     S.camYaw += (game.yaw - S.camYaw) * damp(3.5, dt);
-    const dist = 7 + game.speed * 0.04;
-    S.camY += (game.y + 2.7 - S.camY) * damp(4, dt);
+    const dist = 8.5 + game.speed * 0.05;
+    S.camY += (game.y + 3.4 - S.camY) * damp(4, dt);
     game.shake *= Math.exp(-4 * dt);
     const sh = game.shake * (Math.random() - 0.5);
     camera.position.set(game.x + Math.sin(S.camYaw) * dist + sh, S.camY + sh, game.z + Math.cos(S.camYaw) * dist);
