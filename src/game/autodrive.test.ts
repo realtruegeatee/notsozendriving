@@ -247,3 +247,28 @@ it("holds a left pass around a stopped oncoming car until safely beyond it", () 
   expect(planAutodrive(0, 6, true, [obstacle], 0, 0.05, -LANE).lane).toBe(-LANE);
   expect(planAutodrive(-32, 6, true, [obstacle], 0, 0.05, -LANE).lane).toBe(LANE);
 });
+it("drives around a stationary car in its own lane without waiting", () => {
+  const wreck = { z: -30, lane: LANE, speed: 0, same: true };
+  const result = planAutodrive(0, 20, false, [wreck], 0, 0.05, LANE);
+  expect(result.passing).toBe(true);
+  expect(result.lane).toBe(-LANE);
+});
+it("does not stop beside a stationary car while passing around it", () => {
+  const wreck = { z: -28, lane: LANE, speed: 0, same: true };
+  const result = planAutodrive(-25, 15, true, [wreck], 0, 0.05, -LANE);
+  expect(result.targetSpeed).toBeGreaterThan(3);
+});
+it("uses the right shoulder immediately for a stationary blocker when the left is blocked", () => {
+  const result = planAutodrive(0, 20, false, [
+    { z: -30, lane: LANE, speed: 0, same: true },
+    { z: -60, lane: -LANE, speed: 15, same: false },
+  ], 0, 0.05, LANE);
+  expect(result.passing).toBe("right");
+});
+it("still waits patiently before right-passing a merely slow car", () => {
+  const result = planAutodrive(0, 20, false, [
+    { z: -30, lane: LANE, speed: 8, same: true },
+    { z: -60, lane: -LANE, speed: 15, same: false },
+  ], 0, 0.05, LANE);
+  expect(result.passing).toBe(false);
+});
