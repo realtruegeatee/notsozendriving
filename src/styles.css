@@ -213,7 +213,10 @@ body { font-family: var(--font-body); overscroll-behavior: none; }
 .zen-dot { width: 8px; height: 8px; border-radius: 99px; background: var(--brake); border: 1.5px solid var(--ink); }
 .zen-dot[data-s="online"] { background: var(--gas); }
 .zen-pop { position: absolute; top: calc(100% + 6px); left: 0; min-width: 170px; padding: 0.6rem 0.7rem; box-shadow: 4px 4px 0 var(--ink); }
-.zen-player { font-size: 0.85rem; font-weight: 600; padding: 2px 0; border-bottom: 1px dashed var(--ink-soft); }
+.zen-player { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 0.85rem; font-weight: 600; padding: 2px 0; border-bottom: 1px dashed var(--ink-soft); }
+.zen-player span { overflow-wrap: anywhere; min-width: 0; }
+.zen-teleport { flex-shrink: 0; color: var(--ink); }
+.zen-pop { width: min(260px, calc(100vw - 24px)); max-height: 50dvh; overflow-y: auto; z-index: 16; }
 .zen-radio { position: absolute; right: 12px; top: calc(max(env(safe-area-inset-top), 12px) + 48px); width: min(280px, calc(100vw - 24px)); padding: 0.8rem; box-shadow: 5px 5px 0 var(--ink); pointer-events: auto; z-index: 15; max-height: 70dvh; overflow-y: auto; }
 .zen-radio-head { display: flex; justify-content: space-between; align-items: center; }
 .zen-now { font-family: var(--font-display); font-style: italic; font-size: 1.4rem; margin-top: 4px; }

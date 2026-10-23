@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Radio as RadioIcon, Users, X } from "lucide-react";
+import { Radio as RadioIcon, Users, X, MapPin } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { STATIONS, radio } from "./radio";
 import { net } from "./store";
 
@@ -48,7 +49,12 @@ export function PlayersChip({ room }: { room: string }) {
         <div className="zen-panel zen-pop">
           <p className="zen-label" style={{ marginTop: 0 }}>{room === "PUBLIC" ? "Open road" : `Room ${room}`}</p>
           {net.status !== "online" && <p className="zen-hint">Connecting…</p>}
-          {net.roster.map((n, i) => <p key={i} className="zen-player">{n}</p>)}
+          {net.roster.map((p) => (
+            <div key={p.id} className="zen-player">
+              <span>{p.name}{p.id === net.id ? " (you)" : ""}</span>
+              {p.id !== net.id && <Button variant="ghost" size="icon" className="zen-teleport" title={`Teleport to ${p.name}`} aria-label={`Teleport to ${p.name}`} disabled={net.status !== "online" || !net.ready.has(p.id)} onClick={() => { net.teleportTo = p.id; setOpen(false); }}><MapPin size={16} /></Button>}
+            </div>
+          ))}
         </div>
       )}
     </div>
