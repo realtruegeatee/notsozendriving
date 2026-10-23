@@ -196,15 +196,20 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         if (u.retryPass) { S.passing = true; S.blockedFor = 0; }
         const lat0 = game.x - roadX(game.z);
         const target = ramTarget(game.z, lat0, cars);
-        const heldUp = plan.targetSpeed < Math.min(game.speed + 2, maxSpeedForDistance(game.distance) * 0.7);
-        const imp = stepImpatience(S.impatience, S.ramming, heldUp, !!target, dt);
+        // Only lose patience when no pass is possible.
+        const heldUp = !plan.passing && plan.targetSpeed < Math.min(game.speed + 2, maxSpeedForDistance(game.distance) * 0.7);
+        const imp = stepImpatience(S.impatience, S.ramming && !plan.passing, heldUp, !!target, dt);
         S.impatience = imp.impatience; S.ramming = imp.ramming;
         if (S.ramming && target) {
-          // Out of patience: floor it into the blocker until it is out of the way.
+          // Out of patience: bump it repeatedly — charge, hit, back off, charge again.
+          const gap = game.z - target.z;
+          S.backingOff = stepBump(S.backingOff, gap);
           const ramDesired = Math.atan2(lat0 - target.lane, game.z - target.z);
           steerIn = clamp((game.yaw - ramDesired) * 5, -1, 1);
-          thr = 1; brk = 0; reversing = false; S.reverseLeft = 0; S.stuckFor = 0;
-        }
+          reversing = false; S.reverseLeft = 0; S.stuckFor = 0;
+          if (S.backingOff) { thr = 0; brk = 1; }
+          else { thr = 1; brk = 0; }
+        } else S.backingOff = false;
       } else { S.passing = false; S.blockedFor = 0; S.stuckFor = 0; S.reverseLeft = 0; S.impatience = 0; S.ramming = false; }
       S.steer += (steerIn - S.steer) * damp(7, dt);
 

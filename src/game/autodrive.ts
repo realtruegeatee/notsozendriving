@@ -122,3 +122,10 @@ export function stepImpatience(impatience: number, ramming: boolean, heldUp: boo
   const next = heldUp ? impatience + dt : Math.max(0, impatience - dt * 0.5);
   return next >= RAM_AFTER ? { impatience: 0, ramming: true } : { impatience: next, ramming: false };
 }
+// Repeated bumping: charge until contact, back off to a run-up gap, then charge again.
+export const BUMP_CONTACT = 5.2;
+export const BUMP_RUNUP = 10;
+export function stepBump(backingOff: boolean, gap: number) {
+  if (backingOff) return gap >= BUMP_RUNUP ? false : true;
+  return gap <= BUMP_CONTACT;
+}
