@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { LANE, ROAD_HALF } from "./road";
-import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, npcTargetSpeed, ONCOMING_SWERVE_CHANCE, pickRunoffVictim, reactionSpeed, roadsideCrash, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
+import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseSporadicEvent, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, npcTargetSpeed, ONCOMING_SWERVE_CHANCE, pickRunoffVictim, reactionSpeed, roadsideCrash, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, SPORADIC_INTERVAL, threatenedTraffic } from "./traffic-reaction";
 
 const car = { s: 30, lane: LANE, crashAge: -1, v: 10 };
 it("NPC reactions include a chance to crash, accelerate, or brake", () => {
@@ -104,4 +104,19 @@ it("the nearest car in the way is the one that gets shoved", () => {
 it("swerving cars can leave the road on either side", () => {
   expect(roadsideCrash(5, LANE, LANE, 0, 1).offset).toBeGreaterThan(LANE);
   expect(roadsideCrash(5, LANE, LANE, 0, -1).offset).toBeLessThan(-LANE);
+});
+
+it("sporadic mood swings are frame-rate independent and rare per frame", () => {
+  expect(shouldActSporadic(0, 0.016)).toBe(true);
+  expect(shouldActSporadic(0.999, 0.016)).toBe(false);
+  // Same average rate at any frame rate: p = dt / interval.
+  expect(shouldActSporadic(0.05 / SPORADIC_INTERVAL - 0.0001, 0.05)).toBe(true);
+  expect(shouldActSporadic(0.05 / SPORADIC_INTERVAL + 0.0001, 0.05)).toBe(false);
+  expect(shouldActSporadic(0, 0)).toBe(false);
+});
+it("sporadic events favor harmless chaos over unprovoked crashes", () => {
+  expect(chooseSporadicEvent(0.1)).toBe("accelerate");
+  expect(chooseSporadicEvent(0.5)).toBe("brake");
+  expect(chooseSporadicEvent(0.9)).toBe("wander");
+  expect(chooseSporadicEvent(0.99)).toBe("crash");
 });
