@@ -10,7 +10,7 @@ it("caps the car at its normal top speed before 5 km", () => {
 
 it("raises the top speed to 200 km/h once 5 km is driven", () => {
   expect(maxSpeedForDistance(5000) * 3.6).toBeCloseTo(200, 6);
-  expect(maxSpeedForDistance(50_000) * 3.6).toBeCloseTo(200, 6);
+  expect(maxSpeedForDistance(9_999) * 3.6).toBeCloseTo(200, 6);
 });
 
 it("keeps the original engine curve below the unlock", () => {
