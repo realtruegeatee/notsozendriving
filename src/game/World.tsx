@@ -220,15 +220,16 @@ function Scenery() {
       const z = -i * MOUNT_STEP;
       const w = biomeWeights(z);
       const side = hash(i * 23) > 0.5 ? 1 : -1;
-      const u = side * (130 + hash(i * 29) * 90);
+      const u = side * (170 + hash(i * 29) * 90);
       const h = (25 + hash(i * 31) * 35) * (0.5 + 1.8 * w.alpine) * (1 - 0.5 * w.desert);
       const y = roadY(z) - 4;
       d.rotation.set(0, hash(i) * 6, 0);
-      d.scale.set(h * 1.4, h, h * 1.4);
+      const r = Math.min(h * 0.9, Math.abs(u) - 90);
+      d.scale.set(r, h, r);
       d.position.set(roadX(z) + u, y + h / 2, z); d.updateMatrix(); mounts.current!.setMatrixAt(mc, d.matrix);
       mounts.current!.setColorAt(mc, tmp.copy(rockC).lerp(sandB, w.desert).lerp(forestG, w.forest * 0.6));
       const capped = h > 45;
-      d.scale.set(capped ? h * 0.5 : 0.001, capped ? h * 0.36 : 0.001, capped ? h * 0.5 : 0.001);
+      d.scale.set(capped ? r * 0.36 : 0.001, capped ? h * 0.36 : 0.001, capped ? r * 0.36 : 0.001);
       d.position.set(roadX(z) + u, y + h * 0.82, z); d.updateMatrix(); caps.current!.setMatrixAt(mc, d.matrix);
       mc++;
     }
