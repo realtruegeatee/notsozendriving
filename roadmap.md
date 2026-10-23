@@ -10,5 +10,7 @@
 - [x] Add headlight flashing and horn
 - [x] Autopilot automatically honks and flashes at traffic
 - [x] Signal only when a slower car ahead in our lane forces us to slow down
+- [x] Spam honk and flashes repeatedly while a car is still blocking, not just once
+- [ ] Let NPC cars run each other off the street when one accelerates
 - [x] Give NPCs a chance to crash off-road, accelerate, or brake in response
 - [x] Enable and verify collisions between NPC cars
