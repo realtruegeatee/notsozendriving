@@ -2,8 +2,13 @@ import { ROAD_HALF } from "./road";
 
 export type TrafficReaction = "crash" | "accelerate" | "brake";
 export type ReactingCar = { s: number; lane: number; crashAge: number; reactionLeft?: number };
+/** Roadside wrecks stay rare; most threatened NPCs speed away, some slow down. */
+export const CRASH_CHANCE = 0.12;
+export const ACCELERATE_CHANCE = 0.58;
+export const BRAKE_CHANCE = 0.3;
+
 export function chooseTrafficReaction(random: number): TrafficReaction {
-  return random < 1 / 3 ? "crash" : random < 2 / 3 ? "accelerate" : "brake";
+  return random < CRASH_CHANCE ? "crash" : random < CRASH_CHANCE + ACCELERATE_CHANCE ? "accelerate" : "brake";
 }
 export function reactionSpeed(base: number, reaction: TrafficReaction | null) {
   if (reaction === "accelerate") return Math.min(32, base + 12);
