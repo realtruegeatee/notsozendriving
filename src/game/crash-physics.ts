@@ -11,11 +11,15 @@ export function createSwerveMotion(offset: number, speed: number, side: number, 
 export function createCrashMotion(offset: number, speed: number, side: number, severity = 0): CrashMotion {
   const strength = Math.max(0, Math.min(2, severity));
   const direction = Math.sign(side) || 1;
-  return { offset, lateral: direction * (5 + Math.min(3, speed * 0.1) + strength * 2), speed,
+  return { offset, lateral: direction * (2 + Math.min(3, speed * 0.1) + strength * 3), speed,
     yaw: 0, spin: -direction * (0.65 + strength * 0.8), roll: 0, rollVelocity: direction * (0.5 + strength * 0.7),
-    bounce: 0, vertical: strength * 0.8, side: direction, restRoll: direction * 0.13 };
+    bounce: 0, vertical: 1.2 + strength * 1.2, side: direction, restRoll: direction * 0.13 };
 }
 const reduce = (v: number, amount: number) => Math.sign(v) * Math.max(0, Math.abs(v) - amount);
+/** A wreck that stopped moving but ended up still on the road can drive again. */
+export function canDriveAgain(motion: CrashMotion) {
+  return motion.speed === 0 && motion.lateral === 0 && Math.abs(motion.spin) < 0.001 && Math.abs(motion.offset) <= ROAD_HALF;
+}
 /** Free ragdoll momentum: the wreck slides, spins and tumbles where the impact sent it. Nothing steers it along a path. */
 export function stepCrashMotion(motion: CrashMotion, dt: number): number {
   let distance = 0;

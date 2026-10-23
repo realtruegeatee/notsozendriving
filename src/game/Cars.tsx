@@ -15,6 +15,7 @@ import { flashLights, horn } from "./signals";
 import { chooseSporadicEvent, chooseTrafficReaction, npcTargetSpeed, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
 import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact } from "./npc-collision";
+import { canDriveAgain } from "./crash-physics";
 import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import type { DrivingNpc } from "./npc-driving";
 import { createCrashMotion, createSwerveMotion, stepCrashMotion } from "./crash-physics";
@@ -114,7 +115,7 @@ function GltfCar({ url, wheels, driverId }: CarModelProps) {
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; stunLeft?: number; wander?: number; wanderLeft?: number };
+type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; stunLeft?: number; wander?: number; wanderLeft?: number; restFor?: number };
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
   const npcs = useMemo<Npc[]>(() => {
@@ -316,6 +317,17 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
             : createSwerveMotion(n.crashOrigin ?? npcOffset(n), n.v, n.crashSide ?? Math.sign(n.lane), n.laneVelocity);
           n.s += (same ? 1 : -1) * stepCrashMotion(n.crashMotion, dt);
           n.v = n.crashMotion.speed;
+          // A wreck that stopped on the road shakes itself off and drives again.
+          if (canDriveAgain(n.crashMotion)) {
+            n.restFor = (n.restFor ?? 0) + dt;
+            if (n.restFor > 2.5) {
+              const stoppedAt = npcOffset(n);
+              n.crashAge = -1; delete n.crashMotion; delete n.crashSpeed;
+              n.reaction = null; n.reactionLeft = 0; n.restFor = 0; n.impactOffset = 0;
+              n.passOffset = stoppedAt - n.lane; n.laneVelocity = 0;
+              n.recoveryLeft = 2; n.v = 0;
+            }
+          } else n.restFor = 0;
         } else {
           n.v += (target - n.v) * damp(n.reaction === "brake" ? 3.5 : 2, dt);
           n.s += (same ? 1 : -1) * n.v * dt;
