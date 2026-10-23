@@ -1,6 +1,8 @@
 import { AGGRESSION, type Aggression } from "./aggression";
 import { useEffect, useRef, useState } from "react";
-import { Eye, Moon, Pause, Play, Sun, Gauge, Megaphone, Lamp } from "lucide-react";
+import { Eye, Moon, Pause, Play, Sun, Gauge, Megaphone, Lamp, MonitorDown } from "lucide-react";
+import windowsAsset from "../assets/zen-drive-windows.asset.json";
+import linuxAsset from "../assets/zen-drive-linux.asset.json";
 import { Button } from "@/components/ui/button";
 import { flashLights, horn, initSignals } from "./signals";
 import { OnlinePicker, PlayersChip, RadioButton, newCode } from "./Lobby";
@@ -160,6 +162,18 @@ function CarPicker({ car, setCar }: { car: CarId; setCar: (c: CarId) => void }) 
   );
 }
 
+function DesktopPicker() {
+  return (
+    <>
+      <p className="zen-label">Desktop app</p>
+      <div className="zen-seg">
+        <a href={windowsAsset.url} download="zen-drive-windows.zip"><MonitorDown size={16} />Windows</a>
+        <a href={linuxAsset.url} download="zen-drive-linux.tar.gz"><MonitorDown size={16} />Linux</a>
+      </div>
+    </>
+  );
+}
+
 function TimePicker({ night, setNight }: { night: boolean; setNight: (n: boolean) => void }) {
   return (
     <>
@@ -236,6 +250,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
           <CarPicker car={car} setCar={pickCar} />
           <LayoutPicker layout={layout} setLayout={setLayout} />
           <AggroPicker />
+          <DesktopPicker />
           <button className="zen-start" onClick={start}>Start driving</button>
           <p className="zen-hint">Keyboard: WASD or arrows, N day/night, V camera view, X horn, T flash.</p>
         </div>
