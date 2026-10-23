@@ -1,6 +1,6 @@
 import { AGGRESSION, type Aggression } from "./aggression";
 import { useEffect, useRef, useState } from "react";
-import { Eye, Moon, Pause, Play, Sun, Gauge, Megaphone, Lamp, MonitorDownload } from "lucide-react";
+import { Eye, Moon, Pause, Play, Sun, Gauge, Megaphone, Lamp, MonitorDown } from "lucide-react";
 import windowsAsset from "../assets/zen-drive-windows.asset.json";
 import linuxAsset from "../assets/zen-drive-linux.asset.json";
 import { Button } from "@/components/ui/button";
