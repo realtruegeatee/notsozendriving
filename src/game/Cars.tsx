@@ -114,7 +114,7 @@ function GltfCar({ url, wheels, driverId }: CarModelProps) {
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number };
+type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; stunLeft?: number };
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
   const npcs = useMemo<Npc[]>(() => {
@@ -268,6 +268,14 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       if (active) {
         n.contactLeft = Math.max(0, n.contactLeft - dt);
         n.recoveryLeft = Math.max(0, (n.recoveryLeft ?? 0) - dt);
+        const stunned = (n.stunLeft ?? 0) > 0 && n.crashAge < 0;
+        if (stunned) {
+          // Stalled after being rammed: stay put where shoved, then drive on and ease home.
+          n.stunLeft = Math.max(0, (n.stunLeft ?? 0) - dt);
+          n.v = 0;
+          if (n.stunLeft === 0) n.recoveryLeft = 2;
+          return;
+        }
         n.impactOffset *= Math.exp(-0.8 * dt);
         const crashing = n.crashAge >= 0;
         if (crashing) n.crashAge += dt;
@@ -336,7 +344,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           if (!wasCrashing && n.crashAge >= 0) {
             n.reaction = "crash"; n.reactionLeft = 7; n.passing = false;
           }
-          if (n.lane > 0 && game.speed > n.v) {
+          if (n.lane > 0 && game.speed > n.v && !((n.stunLeft ?? 0) > 0)) {
             // Push it: hand momentum to the car ahead instead of just stopping dead.
             const share = (game.speed - n.v) * 0.6;
             n.v += share; n.s += Math.min(1.5, share * 0.08);
