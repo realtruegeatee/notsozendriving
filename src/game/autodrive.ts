@@ -43,6 +43,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   } else if (passing ? Boolean(blocker) || !mergeSafe : Boolean(blocker)) {
     if (!leftBlocked) next = true;
     else if (!rightBlocked && (passing || waited >= RIGHT_PASS_WAIT)) next = "right";
+    else if (passing && !mergeSafe) next = true;
   }
   // Direction comes from the NPC's home lane, not its overtaking offset.
   // Spot an oncoming overtaker early enough to steer out, rather than merely

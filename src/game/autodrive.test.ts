@@ -222,3 +222,6 @@ it("holds acceleration until the actual footprint clears a close blocker", () =>
   expect(planAutodrive(0, 25, true, [car], 0, 0.05, LANE).targetSpeed).toBeLessThan(25);
   expect(planAutodrive(0, 25, true, [car], 0, 0.05, -LANE).targetSpeed).toBe(34);
 });
+it("does not cut home from a left pass into a fast approaching rear car", () => {
+  expect(planAutodrive(0, 25, true, [{ z: 12, lane: LANE, speed: 40, same: true }], 0, 0.05, -LANE).passing).toBe(true);
+});
