@@ -273,7 +273,14 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     if (active) {
       for (let i = 0; i < npcs.length; i++) for (let j = i + 1; j < npcs.length; j++) {
         const a = npcs[i], b = npcs[j];
-        if (a && b) resolveNpcCollision(a, b);
+        if (a && b) {
+          const aWasWreck = a.crashAge >= 0, bWasWreck = b.crashAge >= 0;
+          resolveNpcCollision(a, b);
+          if ((!aWasWreck && a.shove && a.crashAge >= 0) || (!bWasWreck && b.shove && b.crashAge >= 0)) {
+            const aggressor = a.crashAge >= 0 ? b : a;
+            aggressor.reaction = null; aggressor.reactionLeft = 0;
+          }
+        }
       }
     }
     npcs.forEach((n, i) => {

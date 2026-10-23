@@ -12,7 +12,7 @@ export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], des
   const passClear = !cars.some((o) => o !== car && Math.abs(o.lane + o.passOffset - passingLane) < 2.1 && gap(o) > -18 && gap(o) < (o.lane * car.lane > 0 ? 55 : Math.max(90, (car.v + o.v) * 3)));
   const mergeClear = !homeCars.some((o) => gap(o) > -8 && gap(o) < 18);
   let passing = car.passing;
-  if (passing && mergeClear) passing = false;
+  if (passing && mergeClear && !blocker) passing = false;
   else if (!passing && blocker && passClear) passing = true;
   let speed = desiredSpeed;
   const target = passing ? passingLane : car.lane;
