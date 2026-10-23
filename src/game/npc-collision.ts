@@ -42,6 +42,9 @@ export function resolveNpcCollision(a: CollisionNpc, b: CollisionNpc) {
       a.v = shared; b.v = shared;
     }
     a.contactLeft = 0.5; b.contactLeft = 0.5;
+    // Contact must also slow the momentum store, or the next frame restores wreck speed.
+    if (a.crashMotion) a.crashMotion.speed = Math.min(a.crashMotion.speed, a.v);
+    if (b.crashMotion) b.crashMotion.speed = Math.min(b.crashMotion.speed, b.v);
   }
   // A forceful hit starts the existing roadside skid; wreck physics then stops the victim.
   if (shove) {

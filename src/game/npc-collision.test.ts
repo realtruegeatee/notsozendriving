@@ -57,6 +57,15 @@ it("nearby cars cannot shove without physical contact", () => {
   expect(resolveNpcCollision(faster, slower)).toBe(false);
   expect(slower.crashAge).toBe(-1);
 });
+it("a new collision cannot restore a wreck's pre-impact momentum", () => {
+  const wreck: CollisionNpc = npc(30, 10);
+  wreck.crashAge = 0;
+  wreck.crashMotion = createCrashMotion(LANE, 10, 1);
+  const car = npc(32, 8);
+  expect(resolveNpcCollision(wreck, car)).toBe(true);
+  expect(wreck.crashMotion.speed).toBe(wreck.v);
+  expect(wreck.crashMotion.speed).toBeLessThan(10);
+});
 it("head-on NPC crashes send both cars off the road in different directions", () => {
   const a = { s: 50, lane: LANE, v: 15, crashAge: -1, impactOffset: 0, contactLeft: 0, passOffset: -2 * LANE };
   const b = { s: 51, lane: -LANE, v: 15, crashAge: -1, impactOffset: 0, contactLeft: 0 };

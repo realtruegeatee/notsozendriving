@@ -1,6 +1,6 @@
 # Roadmap
-- [ ] Add temporary gameplay recording with download-and-delete
-- [ ] Improve crashed-car momentum, skid and settling physics
+- [x] Add temporary gameplay recording with download-and-delete
+- [x] Improve crashed-car momentum, skid and settling physics
 - [x] Multiplayer: public road + private room codes, nickname only (Lovable Cloud realtime)
 - [x] Radio: built-in offline stations + live internet stations
 - [x] First-person camera view toggle
