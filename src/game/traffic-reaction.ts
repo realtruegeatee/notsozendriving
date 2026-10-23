@@ -15,6 +15,22 @@ export function shouldSwerveForPass(random: number) {
 /** While a car is still in the way, blare again this often instead of a single polite toot. */
 export const SIGNAL_GAP = 0.8;
 
+// Sporadic mood swings: unprovoked bursts of chaos so traffic never feels scripted.
+export type SporadicEvent = "accelerate" | "brake" | "wander" | "crash";
+/** Average seconds between one car's mood swings. */
+export const SPORADIC_INTERVAL = 7;
+/** Frame-rate independent roll: true when this frame starts a mood swing. */
+export function shouldActSporadic(random: number, dt: number) {
+  return random < Math.max(0, dt) / SPORADIC_INTERVAL;
+}
+/** Mostly harmless chaos; an unprovoked ditch-dive stays rare. */
+export function chooseSporadicEvent(random: number): SporadicEvent {
+  if (random < 0.45) return "accelerate";
+  if (random < 0.75) return "brake";
+  if (random < 0.97) return "wander";
+  return "crash";
+}
+
 export function chooseTrafficReaction(random: number): TrafficReaction {
   return random < CRASH_CHANCE ? "crash" : random < CRASH_CHANCE + ACCELERATE_CHANCE ? "accelerate" : "brake";
 }

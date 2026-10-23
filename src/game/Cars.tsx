@@ -12,7 +12,7 @@ import { planAutodrive, ramTarget, stepBump, stepImpatience, stepUnstick } from 
 import { maxSpeedForDistance, powerCurve } from "./speed";
 import type { Passing } from "./autodrive";
 import { flashLights, horn } from "./signals";
-import { chooseTrafficReaction, npcTargetSpeed, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
+import { chooseSporadicEvent, chooseTrafficReaction, npcTargetSpeed, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
 import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact } from "./npc-collision";
 import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
@@ -114,7 +114,7 @@ function GltfCar({ url, wheels, driverId }: CarModelProps) {
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; stunLeft?: number };
+type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; stunLeft?: number; wander?: number; wanderLeft?: number };
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
   const npcs = useMemo<Npc[]>(() => {
@@ -283,11 +283,21 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         if (!crashing && n.reactionLeft === 0) n.reaction = null;
         let target = npcTargetSpeed(n.base, n.reaction, crashing);
         if (!crashing) {
+          // Sporadic mood swings: unprovoked speed bursts, sudden braking, lane
+          // wandering, and the rare random dive off the road.
+          n.wanderLeft = Math.max(0, (n.wanderLeft ?? 0) - dt);
+          if (n.wanderLeft === 0) n.wander = 0;
+          if (!n.passing && n.reactionLeft <= 0 && (n.recoveryLeft ?? 0) <= 0 && shouldActSporadic(Math.random(), dt)) {
+            const mood = chooseSporadicEvent(Math.random());
+            if (mood === "wander") { n.wander = (Math.random() - 0.5) * 2.6; n.wanderLeft = 1.5 + Math.random() * 2; }
+            else if (mood === "crash") { n.reaction = "crash"; n.reactionLeft = 7; n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false; }
+            else { n.reaction = mood; n.reactionLeft = 2 + Math.random() * 3; }
+          }
           const plan = n.recoveryLeft > 0 ? { passing: false, passOffset: 0, speed: Math.max(6, n.base * 0.7), swerve: false } : plans[i];
           if (!plan) return;
           n.passing = plan.passing;
           const previousVelocity = n.laneVelocity;
-          const laneStep = stepNpcLane(n.passOffset, n.laneVelocity, plan.passOffset, n.v, dt);
+          const laneStep = stepNpcLane(n.passOffset, n.laneVelocity, plan.passOffset + (n.wander ?? 0), n.v, dt);
           n.passOffset = laneStep.offset; n.laneVelocity = laneStep.velocity;
           const lean = clamp(-(n.laneVelocity - previousVelocity) / Math.max(dt, 0.001) * Math.sign(n.lane) * 0.012, -0.06, 0.06);
           n.laneRoll += (lean - n.laneRoll) * damp(6, dt);
@@ -320,7 +330,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           n.reaction = null; n.reactionLeft = 0;
           n.impactOffset = 0; n.contactLeft = 0;
           n.recoveryLeft = 0; n.stunLeft = 0;
-          n.passOffset = 0; n.passing = false; delete n.crashOrigin; delete n.crashSide; delete n.dodged; n.shove = 0; n.laneVelocity = 0; n.laneRoll = 0;
+          n.passOffset = 0; n.passing = false; delete n.crashOrigin; delete n.crashSide; delete n.dodged; n.shove = 0; n.laneVelocity = 0; n.laneRoll = 0; n.wander = 0; n.wanderLeft = 0;
         }
       }
     });
