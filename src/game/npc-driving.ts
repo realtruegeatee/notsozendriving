@@ -37,7 +37,11 @@ export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], des
     const otherOffset = lateral(other);
     // Keep braking for the current lane until the car's footprint has moved clear.
     if (Math.abs(otherOffset - target) > 2.1 && Math.abs(otherOffset - offset) > 2.1) continue;
-    if (other.lane * car.lane < 0) speed = Math.min(speed, Math.max(0, (distance - 12) * 0.3));
+    // Only the car out of its home lane yields fully; the other just eases off, so head-ons never deadlock.
+    if (other.lane * car.lane < 0) {
+      const outOfLane = passing || Math.abs(offset - car.lane) > 0.5;
+      speed = Math.min(speed, Math.max(outOfLane ? 0 : desiredSpeed * 0.6, (distance - 12) * 0.3));
+    }
     else speed = Math.min(speed, Math.max(0, other.v + (distance - 12) * 0.6));
   }
   return { passing, passOffset: passing ? -2 * car.lane : 0, speed };

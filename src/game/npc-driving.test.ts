@@ -81,3 +81,7 @@ it("lane changes are delta-timed and parked NPCs do not slide sideways", () => {
   expect(simulate(1 / 30)).toBeCloseTo(simulate(1 / 120), 2);
   expect(stepNpcLane(-1, -2, -4.2, 0, 0.05)).toEqual({ offset: -1, velocity: 0 });
 });
+it("A home-lane NPC only eases off for an oncoming passer instead of stopping", () => {
+  const home = npc(0, 20), passer = { ...npc(20, 20, -LANE), passOffset: 2 * LANE, passing: true };
+  expect(planNpcDriving(home, [home, passer], 20).speed).toBeCloseTo(12);
+});
