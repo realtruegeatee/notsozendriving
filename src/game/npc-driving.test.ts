@@ -1,8 +1,30 @@
 import { expect, it } from "vitest";
-import { planNpcDriving, stepNpcLane } from "./npc-driving";
+import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import { LANE } from "./road";
 
 const npc = (s: number, v: number, lane = LANE) => ({ s, v, base: v, lane, crashAge: -1, passOffset: 0, passing: false });
+it("aggressive NPCs cruise faster in both directions", () => {
+  for (const same of [true, false]) {
+    expect(npcCruisingSpeed(same, true, 0)).toBe(23);
+    expect(npcCruisingSpeed(same, true, 1)).toBe(30);
+    expect(npcCruisingSpeed(same, true, 0.5)).toBeGreaterThan(npcCruisingSpeed(same, false, 0.5));
+  }
+});
+it("aggressive drivers take tighter passing windows without entering immediate oncoming traffic", () => {
+  for (const lane of [LANE, -LANE]) {
+    const d = Math.sign(lane);
+    const fast = { ...npc(0, 26, lane), aggressive: true };
+    const slow = npc(20 * d, 12, lane), oncoming = npc(100 * d, 20, -lane);
+    expect(planNpcDriving(fast, [fast, slow, oncoming], 26).passing).toBe(true);
+    expect(planNpcDriving({ ...fast, aggressive: false }, [slow, oncoming], 26).passing).toBe(false);
+    expect(planNpcDriving(fast, [fast, slow, { ...oncoming, s: 35 * d }], 26).passing).toBe(false);
+  }
+});
+it("aggressive drivers follow closer without parking behind moving traffic", () => {
+  const fast = { ...npc(0, 26), aggressive: true }, slow = npc(12, 12), oncoming = npc(30, 20, -LANE);
+  expect(planNpcDriving(fast, [fast, slow, oncoming], 26).speed).toBeCloseTo(14.4);
+  expect(planNpcDriving({ ...fast, aggressive: false }, [slow, oncoming], 26).speed).toBe(12);
+});
 it("NPCs overtake slower NPCs in both travel directions", () => {
   for (const lane of [LANE, -LANE]) {
     const fast = npc(0, 22, lane), slow = npc(25 * Math.sign(lane), 12, lane);

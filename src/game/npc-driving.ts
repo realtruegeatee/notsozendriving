@@ -1,5 +1,10 @@
-export type DrivingNpc = { s: number; lane: number; v: number; base: number; crashAge: number; passOffset: number; passing: boolean; offset?: number };
+export type DrivingNpc = { s: number; lane: number; v: number; base: number; crashAge: number; passOffset: number; passing: boolean; offset?: number; aggressive?: boolean };
 const lateral = (car: DrivingNpc) => car.offset ?? car.lane + car.passOffset;
+
+/** Mix impatient drivers with slower traffic to create real catches and passes. */
+export function npcCruisingSpeed(sameDirection: boolean, aggressive: boolean, random: number) {
+  return aggressive ? 23 + random * 7 : sameDirection ? 12 + random * 7 : 17 + random * 6;
+}
 
 /** Critically damped steering: continuous velocity, with no parked sideways sliding. */
 export function stepNpcLane(offset: number, velocity: number, target: number, speed: number, rawDelta: number) {
@@ -18,15 +23,16 @@ export function stepNpcLane(offset: number, velocity: number, target: number, sp
 /** Lane changes keep the original lane as the travel direction. */
 export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], desiredSpeed: number) {
   const direction = Math.sign(car.lane);
+  const followingGap = car.aggressive ? 8 : 12;
   const offset = lateral(car);
   const gap = (other: DrivingNpc) => (other.s - car.s) * direction;
   const homeCars = cars.filter((o) => o !== car && Math.abs(lateral(o) - car.lane) < 2.1);
-  const blocker = homeCars.filter((o) => gap(o) > 0 && gap(o) < 45 && o.lane * car.lane > 0 && o.v < desiredSpeed - 1.5).sort((a, b) => gap(a) - gap(b))[0];
+  const blocker = homeCars.filter((o) => gap(o) > 0 && gap(o) < (car.aggressive ? 65 : 45) && o.lane * car.lane > 0 && o.v < desiredSpeed - 1.5).sort((a, b) => gap(a) - gap(b))[0];
   const passingLane = -car.lane;
-  const passClear = !cars.some((o) => o !== car && Math.abs(lateral(o) - passingLane) < 2.1 && gap(o) > -18 && gap(o) < (o.lane * car.lane > 0 ? 55 : Math.max(90, (car.v + o.v) * 3)));
+  const passClear = !cars.some((o) => o !== car && Math.abs(lateral(o) - passingLane) < 2.1 && gap(o) > -18 && gap(o) < (o.lane * car.lane > 0 ? 55 : Math.max(car.aggressive ? 60 : 90, (car.v + o.v) * (car.aggressive ? 1.7 : 3))));
   const mergeClear = !homeCars.some((o) => gap(o) > -Math.max(8, 5 + (o.v - car.v) * 2) && gap(o) < Math.max(8, 6 + (car.v - o.v) * 2));
   // Only start a pass with room to merge back in front of the blocker, never into a queue.
-  const mergeSlot = !!blocker && !homeCars.some((o) => o !== blocker && gap(o) > gap(blocker) - 2 && gap(o) < gap(blocker) + 22);
+  const mergeSlot = !!blocker && !homeCars.some((o) => o !== blocker && gap(o) > gap(blocker) - 2 && gap(o) < gap(blocker) + (car.aggressive ? 16 : 22));
   let passing = car.passing;
   if (passing && mergeClear && (!blocker || !passClear)) passing = false;
   else if (!passing && blocker && passClear && mergeSlot) passing = true;
@@ -50,7 +56,7 @@ export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], des
       // Heading home keeps a crawl so the lane change can finish instead of freezing in the wrong lane.
       speed = Math.min(speed, Math.max(passing ? 0 : 1.5, (distance - 12) * 0.3));
     }
-    else speed = Math.min(speed, Math.max(0, other.v + (distance - 12) * 0.6));
+    else speed = Math.min(speed, Math.max(0, other.v + (distance - followingGap) * 0.6));
   }
   return { passing, passOffset: passing ? -2 * car.lane : 0, speed, swerve };
 }
