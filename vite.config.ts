@@ -14,6 +14,24 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    // Pre-bundle deps the app loads at startup so the dev optimizer never discovers them
+    // mid-load and forces a reload (which surfaces as "Importing a module script failed").
+    optimizeDeps: {
+      include: [
+        "three",
+        "@react-three/fiber",
+        "@react-three/drei",
+        "@supabase/supabase-js",
+        "@radix-ui/react-slot",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-label",
+        "class-variance-authority",
+        "clsx",
+        "tailwind-merge",
+        "lucide-react",
+        "sonner",
+      ],
+    },
     plugins: [
       VitePWA({
         strategies: "generateSW",
