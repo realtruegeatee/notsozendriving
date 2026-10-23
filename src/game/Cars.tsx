@@ -121,7 +121,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     if (!traffic) return arr;
     for (let i = 0; i < 10; i++) {
       const same = i < 6;
-      const aggressive = i % 2 === 1;
+      const aggressive = i % 3 !== 0;
       const base = npcCruisingSpeed(same, aggressive, Math.random());
       arr.push({ s: 40 + i * 55 + Math.random() * 30, lane: same ? LANE : -LANE, v: base, base, aggressive, crashAge: -1, reaction: null, reactionLeft: 0, impactOffset: 0, contactLeft: 0, passOffset: 0, passing: false, shove: 0, laneVelocity: 0, laneRoll: 0, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
     }

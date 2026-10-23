@@ -3,7 +3,7 @@ const lateral = (car: DrivingNpc) => car.offset ?? car.lane + car.passOffset;
 
 /** Mix impatient drivers with slower traffic to create real catches and passes. */
 export function npcCruisingSpeed(sameDirection: boolean, aggressive: boolean, random: number) {
-  return aggressive ? 23 + random * 7 : sameDirection ? 12 + random * 7 : 17 + random * 6;
+  return aggressive ? 28 + random * 8 : sameDirection ? 12 + random * 7 : 17 + random * 6;
 }
 
 /** Critically damped steering: continuous velocity, with no parked sideways sliding. */
@@ -27,7 +27,7 @@ export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], des
   const offset = lateral(car);
   const gap = (other: DrivingNpc) => (other.s - car.s) * direction;
   const homeCars = cars.filter((o) => o !== car && Math.abs(lateral(o) - car.lane) < 2.1);
-  const blocker = homeCars.filter((o) => gap(o) > 0 && gap(o) < (car.aggressive ? 65 : 45) && o.lane * car.lane > 0 && o.v < desiredSpeed - 1.5).sort((a, b) => gap(a) - gap(b))[0];
+  const blocker = homeCars.filter((o) => gap(o) > 0 && gap(o) < (car.aggressive ? Math.max(85, car.v * 3) : 60) && o.lane * car.lane > 0 && o.v < desiredSpeed - 1).sort((a, b) => gap(a) - gap(b))[0];
   const passingLane = -car.lane;
   const passClear = !cars.some((o) => o !== car && Math.abs(lateral(o) - passingLane) < 2.1 && gap(o) > -18 && gap(o) < (o.lane * car.lane > 0 ? 55 : Math.max(car.aggressive ? 60 : 90, (car.v + o.v) * (car.aggressive ? 1.7 : 3))));
   const mergeClear = !homeCars.some((o) => gap(o) > -Math.max(8, 5 + (o.v - car.v) * 2) && gap(o) < Math.max(8, 6 + (car.v - o.v) * 2));
@@ -36,7 +36,10 @@ export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], des
   let passing = car.passing;
   if (passing && mergeClear && (!blocker || !passClear)) passing = false;
   else if (!passing && blocker && passClear && mergeSlot) passing = true;
-  let speed = desiredSpeed;
+  // Pull out before catching the blocker; accelerate once the actual footprint clears it.
+  const passSpeed = car.aggressive ? Math.min(40, desiredSpeed + 4) : desiredSpeed;
+  const clearOfBlocker = !blocker || Math.abs(lateral(blocker) - offset) >= 2.1 || gap(blocker) > Math.max(30, car.v * 1.5);
+  let speed = passing && clearOfBlocker ? passSpeed : desiredSpeed;
   // Stuck beside traffic with the pass closing: drop back behind it so the merge opens up.
   if (passing && !passClear && !mergeClear && blocker) speed = Math.min(speed, Math.max(2, blocker.v * 0.6));
   const target = passing ? passingLane : car.lane;
