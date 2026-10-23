@@ -396,7 +396,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       camera.position.set(game.x + Math.sin(S.camYaw) * dist + sh, S.camY + sh, game.z + Math.cos(S.camYaw) * dist);
       camera.lookAt(game.x - Math.sin(game.yaw) * 8, game.y + 1.2, game.z - Math.cos(game.yaw) * 8);
     }
-    const fov = (fp ? 68 : 58) + game.speed * 0.35;
+    const fov = (fp ? 62 : 58) + Math.min(game.speed, 60) * (fp ? 0.25 : 0.35);
     if (Math.abs(camera.fov - fov) > 0.01) { camera.fov += (fov - camera.fov) * damp(3, dt); camera.updateProjectionMatrix(); }
 
     if (sun) {
