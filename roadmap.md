@@ -6,3 +6,5 @@
 - [ ] Add teleporting to other players
 - [ ] Enable gentle player collisions and smooth movement
 - [ ] Verify friend driving with two players
+- [ ] Add aggressive autodrive with overtaking
+- [ ] Add headlight flashing and horn
