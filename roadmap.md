@@ -27,4 +27,4 @@
 - [x] Fix NPCs freezing mid-pass in the oncoming lane
 - [x] Autopilot brakes earlier and stops short of cars instead of bumping
 - [x] Raise the top speed to 200 km/h once 5.0 km is driven
-- [ ] Bind keyboard: T flashes headlights, X honks
+- [x] Bind keyboard: T flashes headlights, X honks
