@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { planAutodrive, RIGHT_PASS, RIGHT_PASS_WAIT } from "./autodrive";
 import { LANE } from "./road";
+import { maxSpeedForDistance } from "./speed";
 
 it("aggressive autodrive overtakes slow traffic in a clear opposite lane", () => {
   const result = planAutodrive(0, 25, false, [{ z: -35, lane: LANE, speed: 15, same: true }]);
@@ -108,4 +109,16 @@ it("brakes early enough for a stopped car ahead at high speed", () => {
 });
 it("stops rather than creeping into an oncoming car in its path", () => {
   expect(planAutodrive(0, 10, false, [{ z: -15, lane: LANE, speed: 20, same: false }]).targetSpeed).toBe(0);
+});
+it("aims for the unlocked 200 km/h ceiling once the road allows it", () => {
+  const v200 = maxSpeedForDistance(5000);
+  expect(planAutodrive(0, 40, false, [], 0, 0, LANE, v200).targetSpeed).toBeCloseTo(v200, 6);
+});
+it("still brakes early for a stopped car when aiming for 200 km/h", () => {
+  const r = planAutodrive(0, 55, false, [
+    { z: -30, lane: LANE, speed: 0, same: true },
+    { z: -60, lane: -LANE, speed: 20, same: false },
+    { z: -32, lane: RIGHT_PASS, speed: 0, same: true },
+  ], 0, 0, LANE, maxSpeedForDistance(5000));
+  expect(r.targetSpeed).toBeLessThanOrEqual(Math.sqrt(2 * 7 * 23) + 0.01);
 });

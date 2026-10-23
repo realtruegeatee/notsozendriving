@@ -5,7 +5,7 @@ export type RoadCar = { z: number; lane: number; speed: number; same: boolean };
 export type Passing = boolean | "right";
 export const RIGHT_PASS = ROAD_HALF - 1;
 export const RIGHT_PASS_WAIT = 1.5;
-export function planAutodrive(z: number, speed: number, passing: Passing, cars: RoadCar[], blockedFor = 0, dt = 0, currentLane = passing === "right" ? RIGHT_PASS : passing ? -LANE : LANE) {
+export function planAutodrive(z: number, speed: number, passing: Passing, cars: RoadCar[], blockedFor = 0, dt = 0, currentLane = passing === "right" ? RIGHT_PASS : passing ? -LANE : LANE, maxSpeed = 34) {
   const ahead = cars.filter((c) => c.same && Math.abs(c.lane - LANE) < 1.8 && z - c.z > -6 && z - c.z < 65);
   const blocker = ahead.filter((c) => c.speed < 29).sort((a, b) => Math.abs(z - a.z) - Math.abs(z - b.z))[0];
   const blocked = (lane: number) => cars.some((c) => Math.abs(c.lane - lane) < 2.2 && z - c.z > -Math.max(10, (c.speed - speed) * 1.0) && z - c.z < (c.same ? Math.max(32, (speed - c.speed) * 1.0) : Math.max(70, (speed + c.speed) * 1.6)));
@@ -33,7 +33,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   // Speed from which we can still brake to the car's speed before reaching a safe gap; creep only with room.
   const follow = (carSpeed: number, gap: number, keep: number) =>
     Math.max(gap > keep + 3 ? CREEP : 0, Math.min(carSpeed + (gap - keep) * 0.7, Math.sqrt(carSpeed * carSpeed + 2 * 7 * Math.max(0, gap - keep))));
-  let targetSpeed = 34;
+  let targetSpeed = maxSpeed;
   if (!next && blocker) targetSpeed = Math.min(targetSpeed, follow(blocker.speed, z - blocker.z, 9));
   if (passing === true && !next && ahead.length > 0) targetSpeed = Math.min(targetSpeed, 16);
   const lane = next === "right" ? RIGHT_PASS : next ? -LANE : LANE;

@@ -8,6 +8,7 @@ import { CARS, FEEL, game, hudEls, input, net } from "./store";
 import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
 import { planAutodrive } from "./autodrive";
+import { maxSpeedForDistance, powerCurve } from "./speed";
 import type { Passing } from "./autodrive";
 import { flashLights, horn } from "./signals";
 import { chooseTrafficReaction, npcTargetSpeed, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
@@ -175,7 +176,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       if (auto) {
         const cars = npcs.map((n) => ({ z: -n.s, lane: npcOffset(n), speed: n.v, same: n.lane > 0 }));
         for (const peer of net.positions.values()) if (now - peer.at < STALE_MS) cars.push({ z: peer.z, lane: peer.x - roadX(peer.z), speed: 20, same: Math.abs(peer.yaw - game.yaw) < Math.PI / 2 });
-        const plan = planAutodrive(game.z, game.speed, S.passing, cars, S.blockedFor, dt, game.x - roadX(game.z));
+        const plan = planAutodrive(game.z, game.speed, S.passing, cars, S.blockedFor, dt, game.x - roadX(game.z), maxSpeedForDistance(game.distance));
         S.passing = plan.passing;
         S.blockedFor = plan.blockedFor;
         const lookZ = game.z - Math.max(12, game.speed * 0.6);
@@ -187,12 +188,13 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       S.steer += (steerIn - S.steer) * damp(7, dt);
 
       let v = game.speed;
-      v += FEEL.ACCEL * thr * (1 - v / FEEL.MAX) * dt;
+      const maxV = maxSpeedForDistance(game.distance);
+      v += FEEL.ACCEL * thr * powerCurve(v, maxV) * dt;
       v -= FEEL.BRAKE * brk * dt;
       v *= Math.exp(-FEEL.DRAG * dt);
       const lat = game.x - roadX(game.z);
       if (Math.abs(lat) > ROAD_HALF + 0.6) v *= Math.exp(-0.9 * dt);
-      v = clamp(v, 0, FEEL.MAX);
+      v = clamp(v, 0, maxV);
       game.speed = v;
 
       const roadYaw = Math.atan(roadXd(game.z));
