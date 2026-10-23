@@ -7,6 +7,7 @@ import { groundY, LANE, ROAD_HALF, roadX, roadXd, roadY, roadYd } from "./road";
 import { CARS, FEEL, game, hudEls, input, net } from "./store";
 import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
+import { aggressionProfile } from "./aggression";
 import { planAutodrive, ramTarget, stepBump, stepImpatience, stepUnstick } from "./autodrive";
 import { maxSpeedForDistance, powerCurve } from "./speed";
 import type { Passing } from "./autodrive";
@@ -172,7 +173,8 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       let reversing = false;
       let steerIn = clamp(input.steer + (k["d"] || k["arrowright"] ? 1 : 0) - (k["a"] || k["arrowleft"] ? 1 : 0), -1, 1);
       S.signalCooldown = Math.max(0, S.signalCooldown - dt);
-      if (shouldAutopilotSignal(auto, game.speed, S.signalCooldown, ps, game.x - roadX(game.z), npcs)) {
+      const prof = aggressionProfile(game.aggro);
+      if (prof.signals && shouldAutopilotSignal(auto, game.speed, S.signalCooldown, ps, game.x - roadX(game.z), npcs)) {
         horn(); flashLights(); S.signalCooldown = SIGNAL_GAP;
         for (const n of npcs) if (threatenedTraffic(ps, n)) {
           n.reaction = chooseTrafficReaction(Math.random()); n.reactionLeft = 7;
@@ -182,7 +184,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       if (auto) {
         const cars = npcs.map((n) => ({ z: -n.s, lane: npcOffset(n), speed: n.v, same: n.lane > 0, laneVelocity: n.crashAge < 0 ? n.laneVelocity : 0, targetLane: n.crashAge < 0 ? n.passing ? -n.lane : n.lane : npcOffset(n) }));
         for (const peer of net.positions.values()) if (now - peer.at < STALE_MS) cars.push({ z: peer.z, lane: peer.x - roadX(peer.z), speed: 20, same: Math.abs(peer.yaw - game.yaw) < Math.PI / 2, laneVelocity: 0, targetLane: peer.x - roadX(peer.z) });
-        const plan = planAutodrive(game.z, game.speed, S.passing, cars, S.blockedFor, dt, game.x - roadX(game.z), maxSpeedForDistance(game.distance));
+        const plan = planAutodrive(game.z, game.speed, S.passing, cars, S.blockedFor, dt, game.x - roadX(game.z), maxSpeedForDistance(game.distance) * prof.speedFactor);
         S.passing = plan.passing;
         S.blockedFor = plan.blockedFor;
         const lookZ = game.z - Math.max(12, game.speed * 0.6);
@@ -198,7 +200,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const target = ramTarget(game.z, lat0, cars);
         // Only lose patience when no pass is possible.
         const heldUp = !plan.passing && plan.targetSpeed < Math.min(game.speed + 2, maxSpeedForDistance(game.distance) * 0.7);
-        const imp = stepImpatience(S.impatience, S.ramming && !plan.passing, heldUp, !!target, dt);
+        const imp = stepImpatience(S.impatience, S.ramming && !plan.passing, heldUp, prof.ramming && !!target, dt);
         S.impatience = imp.impatience; S.ramming = imp.ramming;
         if (S.ramming && target) {
           // Out of patience: bump it repeatedly — charge, hit, back off, charge again.
@@ -374,21 +376,22 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
 
     // camera
     const fp = game.view === "cockpit";
-    if (body.current) body.current.visible = !fp;
+    if (body.current) body.current.visible = true;
     S.camYaw += (game.yaw - S.camYaw) * damp(fp ? 12 : 3.5, dt);
     game.shake *= Math.exp(-4 * dt);
     const sh = game.shake * (Math.random() - 0.5);
     if (fp) {
       // Driver's-eye view: seated left of centre, steady head, gentle look into corners.
-      const eye = game.y + 1.05 + Math.sin(game.distance * 0.9) * 0.004 * Math.min(1, game.speed / 10);
+      const eye = game.y + 1.45 + Math.sin(game.distance * 0.9) * 0.004 * Math.min(1, game.speed / 10);
       S.camY = eye;
-      const side = -0.35, fwd = -0.1;
+      // Dashcam: centred behind the windscreen so the bonnet stays in view.
+      const side = 0, fwd = -0.6;
       const cx = game.x + Math.cos(game.yaw) * side - Math.sin(game.yaw) * -fwd;
       const cz = game.z - Math.sin(game.yaw) * side - Math.cos(game.yaw) * -fwd;
       camera.position.set(cx + sh * 0.15, eye + sh * 0.15, cz);
       const look = 30 + game.speed * 0.4;
       const lookYaw = S.camYaw + S.steer * 0.12;
-      camera.lookAt(cx - Math.sin(lookYaw) * look, roadY(game.z - Math.cos(game.yaw) * look) + 0.9, cz - Math.cos(lookYaw) * look);
+      camera.lookAt(cx - Math.sin(lookYaw) * look, roadY(game.z - Math.cos(game.yaw) * look) + 0.2, cz - Math.cos(lookYaw) * look);
       camera.rotateZ(-S.roll * 0.3);
     } else {
       const dist = 8.5 + game.speed * 0.05;
