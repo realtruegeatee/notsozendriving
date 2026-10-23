@@ -55,3 +55,10 @@ it("nearby cars cannot shove without physical contact", () => {
   expect(resolveNpcCollision(faster, slower)).toBe(false);
   expect(slower.crashAge).toBe(-1);
 });
+it("head-on NPC crashes send both cars off the road in different directions", () => {
+  const a = { s: 50, lane: LANE, v: 15, crashAge: -1, impactOffset: 0, contactLeft: 0, passOffset: -2 * LANE };
+  const b = { s: 51, lane: -LANE, v: 15, crashAge: -1, impactOffset: 0, contactLeft: 0 };
+  expect(resolveNpcCollision(a, b)).toBe(true);
+  expect(a.crashAge).toBe(0); expect(b.crashAge).toBe(0);
+  expect(Math.sign(npcCrash({ ...a, crashAge: 5 }).offset)).not.toBe(Math.sign(npcCrash({ ...b, crashAge: 5 }).offset));
+});

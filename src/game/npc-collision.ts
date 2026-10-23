@@ -24,7 +24,14 @@ export function resolveNpcCollision(a: CollisionNpc, b: CollisionNpc) {
   a.impactOffset += pa.x + push.x / 2 - roadX(-a.s) - npcOffset(a);
   b.impactOffset += pb.x - push.x / 2 - roadX(-b.s) - npcOffset(b);
   if (freshImpact) {
-    if (a.lane * b.lane < 0) { a.v *= 0.2; b.v *= 0.2; }
+    if (a.lane * b.lane < 0) {
+      a.v *= 0.2; b.v *= 0.2;
+      // Head-on: both cars spin off the road, each toward a different roadside.
+      for (const car of [a, b]) if (car.crashAge < 0) {
+        car.crashOrigin = npcOffset(car); car.impactOffset = 0; car.shove = 1;
+        car.crashSide = Math.sign(car.lane) || 1; car.crashAge = 0;
+      }
+    }
     else {
       const shared = Math.min(a.v, b.v) * 0.7;
       a.v = shared; b.v = shared;
