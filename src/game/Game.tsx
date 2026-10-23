@@ -21,7 +21,9 @@ function SkyDome({ night }: { night: boolean }) {
         fog: false,
         uniforms: { top: { value: new THREE.Color() }, bottom: { value: new THREE.Color() } },
         vertexShader: `varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
-        fragmentShader: `uniform vec3 top; uniform vec3 bottom; varying vec3 vP; void main(){ float h = clamp(vP.y*1.6+0.05,0.,1.); gl_FragColor = vec4(mix(bottom, top, pow(h,0.7)),1.); #include <colorspace_fragment> }`,
+        fragmentShader: `uniform vec3 top; uniform vec3 bottom; varying vec3 vP; void main(){ float h = clamp(vP.y*1.6+0.05,0.,1.); gl_FragColor = vec4(mix(bottom, top, pow(h,0.7)),1.);
+#include <colorspace_fragment>
+}`,
       }),
     [],
   );

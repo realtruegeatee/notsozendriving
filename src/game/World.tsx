@@ -70,7 +70,7 @@ function buildChunk(k: number) {
     const z = -(k * CHUNK + (i * CHUNK) / grows);
     const cx = roadX(z);
     for (let j = 0; j < n; j++) {
-      const u = US[j];
+      const u = US[j]!;
       gp.push(cx + u, groundY(z, u), z);
       if (Math.abs(u) < 7.5) col.copy(gravel);
       else {
@@ -144,7 +144,7 @@ function Scenery() {
         d.position.set(x, y + 0.8 * sc, z); d.updateMatrix(); trunk.current!.setMatrixAt(t, d.matrix);
         d.position.set(x, y + 2.6 * sc, z); d.updateMatrix(); leafA.current!.setMatrixAt(t, d.matrix);
         d.position.set(x, y + 3.9 * sc, z); d.scale.setScalar(sc * 0.7); d.updateMatrix(); leafB.current!.setMatrixAt(t, d.matrix);
-        const c = foliage[Math.floor(hash(i * 7 + side) * foliage.length)];
+        const c = foliage[Math.floor(hash(i * 7 + side) * foliage.length)]!;
         leafA.current!.setColorAt(t, c); leafB.current!.setColorAt(t, c);
         t++;
         if (t >= MAXT) break;
