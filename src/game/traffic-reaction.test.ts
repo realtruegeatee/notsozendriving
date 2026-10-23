@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { LANE, ROAD_HALF } from "./road";
-import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, reactionSpeed, roadsideCrash, shouldAutopilotSignal, threatenedTraffic } from "./traffic-reaction";
+import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, reactionSpeed, roadsideCrash, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 
 const car = { s: 30, lane: LANE, crashAge: -1, v: 10 };
 it("NPC reactions include a chance to crash, accelerate, or brake", () => {
@@ -37,9 +37,27 @@ it("no signal unless the car ahead forces us to slow down", () => {
   expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [{ ...car, v: 26 }])).toBe(false); // pulling away
   expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [{ ...car, s: 100 }])).toBe(false); // far ahead
   expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [{ ...car, s: 1 }])).toBe(false); // alongside
-  expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [{ ...car, reactionLeft: 3 }])).toBe(false);
+  expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [{ ...car, reactionLeft: 3 }])).toBe(true); // still in the way
   expect(mustSlowFor(0, LANE, 20, car)).toBe(true);
   expect(mustSlowFor(0, LANE, 20, { ...car, crashAge: 2 })).toBe(false);
+});
+it("blares again and again while a car is still blocking the lane", () => {
+  let cooldown = 0, fired = 0;
+  for (let t = 0; t < 5; t += 1 / 60) {
+    cooldown = Math.max(0, cooldown - 1 / 60);
+    if (shouldAutopilotSignal(true, 20, cooldown, 0, LANE, [car])) { fired++; cooldown = SIGNAL_GAP; }
+  }
+  expect(fired).toBeGreaterThanOrEqual(4);
+  expect(SIGNAL_GAP).toBeLessThan(1);
+});
+it("falls silent once the car ahead is no longer in the way", () => {
+  let cooldown = 0, fired = 0;
+  for (let t = 0; t < 5; t += 1 / 60) {
+    cooldown = Math.max(0, cooldown - 1 / 60);
+    const blocking = t < 1 ? [car] : [{ ...car, v: 26 }];
+    if (shouldAutopilotSignal(true, 20, cooldown, 0, LANE, blocking)) { fired++; cooldown = SIGNAL_GAP; }
+  }
+  expect(fired).toBe(1);
 });
 it("only nearby cars ahead react, and wrecks do not react again", () => {
   expect(threatenedTraffic(0, car)).toBe(true);
