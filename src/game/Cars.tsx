@@ -8,7 +8,7 @@ import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
 import { planAutodrive } from "./autodrive";
 import { flashLights, horn } from "./signals";
-import { chooseTrafficReaction, pickRunoffVictim, reactionSpeed, roadsideCrash, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
+import { chooseTrafficReaction, npcTargetSpeed, pickRunoffVictim, roadsideCrash, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
 import { npcOffset, resolveNpcCollision } from "./npc-collision";
 
