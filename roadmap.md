@@ -34,4 +34,4 @@
 - [x] Autopilot brakes earlier and stops short of cars instead of bumping
 - [x] Raise the top speed to 200 km/h once 5.0 km is driven
 - [x] Bind keyboard: T flashes headlights, X honks
-- [ ] Recognise oncoming overtakers and take a clear escape instead of stopping in their lane
+- [x] Recognise oncoming overtakers and take a clear escape instead of stopping in their lane
