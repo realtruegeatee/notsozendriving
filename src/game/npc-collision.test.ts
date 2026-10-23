@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { carContact } from "./multiplayer-math";
-import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact } from "./npc-collision";
+import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact, STUN_FOR } from "./npc-collision";
 import type { CollisionNpc } from "./npc-collision";
 import { LANE, groundY, roadX, roadXd } from "./road";
 import { createCrashMotion, stepCrashMotion } from "./crash-physics";
@@ -154,4 +154,19 @@ it("the surviving NPC smoothly regains speed and continues in its original direc
   expect(driver.crashAge).toBe(-1);
   expect(driver.s).toBeLessThan(start - 60);
   expect(driver.v).toBeGreaterThan(19);
+});
+
+it("autopilot front hitting a car's rear stops it for 3 seconds and shoves it aside", () => {
+  const hit: CollisionNpc = npc(53, 20);
+  resolveAutopilotNpcContact({ ...playerPose(50), x: playerPose(50).x - 0.4 }, true, hit);
+  expect(hit.stunLeft).toBe(3);
+  expect(STUN_FOR).toBe(3);
+  expect(hit.v).toBe(0);
+  expect(Math.abs(hit.impactOffset)).toBeGreaterThan(0);
+  expect(hit.crashAge).toBe(-1);
+});
+it("manual driving does not stall a car hit from behind", () => {
+  const hit: CollisionNpc = npc(53, 20);
+  resolveAutopilotNpcContact(playerPose(50), false, hit);
+  expect(hit.stunLeft).toBeUndefined();
 });

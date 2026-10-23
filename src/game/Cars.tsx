@@ -319,7 +319,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           delete n.crashMotion; delete n.crashSpeed;
           n.reaction = null; n.reactionLeft = 0;
           n.impactOffset = 0; n.contactLeft = 0;
-          n.recoveryLeft = 0;
+          n.recoveryLeft = 0; n.stunLeft = 0;
           n.passOffset = 0; n.passing = false; delete n.crashOrigin; delete n.crashSide; delete n.dodged; n.shove = 0; n.laneVelocity = 0; n.laneRoll = 0;
         }
       }
