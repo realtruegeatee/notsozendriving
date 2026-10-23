@@ -225,3 +225,20 @@ it("holds acceleration until the actual footprint clears a close blocker", () =>
 it("does not cut home from a left pass into a fast approaching rear car", () => {
   expect(planAutodrive(0, 25, true, [{ z: 12, lane: LANE, speed: 40, same: true }], 0, 0.05, -LANE).passing).toBe(true);
 });
+it("passes a stationary oncoming car on the left when the shoulder is blocked", () => {
+  const result = planAutodrive(0, 6, false, [
+    { z: -20, lane: LANE, speed: 0, same: false },
+    { z: 0, lane: RIGHT_PASS, speed: 0, same: true },
+  ]);
+  expect(result.lane).toBe(-LANE);
+  expect(result.targetSpeed).toBe(34);
+});
+it("does not pass a stationary oncoming car into another occupied lane", () => {
+  const result = planAutodrive(0, 6, false, [
+    { z: -20, lane: LANE, speed: 0, same: false },
+    { z: 0, lane: RIGHT_PASS, speed: 0, same: true },
+    { z: 0, lane: -LANE, speed: 0, same: true },
+  ]);
+  expect(result.lane).toBe(LANE);
+  expect(result.targetSpeed).toBeLessThan(6);
+});
