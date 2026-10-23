@@ -8,7 +8,8 @@ import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
 import { planAutodrive } from "./autodrive";
 import { flashLights, horn } from "./signals";
-import { roadsideCrash, shouldAutopilotSignal, threatenedTraffic } from "./traffic-reaction";
+import { chooseTrafficReaction, reactionSpeed, roadsideCrash, shouldAutopilotSignal, threatenedTraffic } from "./traffic-reaction";
+import type { TrafficReaction } from "./traffic-reaction";
 
 const MODELS = ["sedan", "suv", "hatchback-sports", "taxi", "van", "truck", "sedan-sports"].map((m) => `/models/${m}.glb`);
 MODELS.forEach((m) => useGLTF.preload(m));
@@ -63,7 +64,7 @@ export function CarModel({ url, wheels, driverId }: { url: string; wheels?: Reac
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; model: string; crashAge: number };
+type Npc = { s: number; lane: number; v: number; base: number; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number };
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
   const npcs = useMemo<Npc[]>(() => {
@@ -72,7 +73,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     for (let i = 0; i < 10; i++) {
       const same = i < 6;
       const base = same ? 12 + Math.random() * 7 : 17 + Math.random() * 6;
-      arr.push({ s: 40 + i * 55 + Math.random() * 30, lane: same ? LANE : -LANE, v: base, base, crashAge: -1, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
+      arr.push({ s: 40 + i * 55 + Math.random() * 30, lane: same ? LANE : -LANE, v: base, base, crashAge: -1, reaction: null, reactionLeft: 0, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
     }
     return arr;
   }, [traffic]);
@@ -119,7 +120,10 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       S.signalCooldown = Math.max(0, S.signalCooldown - dt);
       if (shouldAutopilotSignal(auto, game.speed, S.signalCooldown, ps, npcs)) {
         horn(); flashLights(); S.signalCooldown = 2.2;
-        for (const n of npcs) if (threatenedTraffic(ps, n)) n.crashAge = 0;
+        for (const n of npcs) if (threatenedTraffic(ps, n)) {
+          n.reaction = chooseTrafficReaction(Math.random()); n.reactionLeft = 7;
+          if (n.reaction === "crash") n.crashAge = 0;
+        }
       }
       if (auto) {
         const cars = npcs.filter((n) => n.crashAge < 0 || Math.abs(roadsideCrash(n.crashAge, n.lane).offset) < ROAD_HALF).map((n) => ({ z: -n.s, lane: n.crashAge < 0 ? n.lane : roadsideCrash(n.crashAge, n.lane).offset, speed: n.v, same: n.lane > 0 }));
@@ -178,13 +182,15 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       if (active) {
         const crashing = n.crashAge >= 0;
         if (crashing) n.crashAge += dt;
-        let target = crashing ? 0 : n.base;
+        n.reactionLeft = Math.max(0, n.reactionLeft - dt);
+        if (!crashing && n.reactionLeft === 0) n.reaction = null;
+        let target = reactionSpeed(n.base, n.reaction);
         if (same && !crashing) {
           for (const o of npcs) if (o !== n && o.crashAge < 0 && o.lane === n.lane && o.s > n.s && o.s - n.s < 14) target = Math.min(target, o.v);
           const ahead = ps - n.s;
           if (ahead > 0 && ahead < 10 && Math.abs(pLat - n.lane) < 2.2) target = Math.min(target, game.speed);
         }
-        n.v += (target - n.v) * damp(crashing ? 3.5 : 2, dt);
+        n.v += (target - n.v) * damp(crashing || n.reaction === "brake" ? 3.5 : 2, dt);
         if (crashing && n.v < 0.05) n.v = 0;
         n.s += (same ? 1 : -1) * n.v * dt;
         const ds = n.s - ps;
@@ -193,6 +199,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           n.base = same ? 12 + Math.random() * 7 : 17 + Math.random() * 6;
           n.v = n.base;
           n.crashAge = -1;
+          n.reaction = null; n.reactionLeft = 0;
         }
         // gentle bump
         const offset = n.crashAge < 0 ? n.lane : roadsideCrash(n.crashAge, n.lane).offset;
@@ -210,6 +217,9 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const offset = crash?.offset ?? n.lane;
         g.position.set(roadX(z) + offset, (crash ? groundY(z, offset) + 0.03 : roadY(z)) + (crash?.bounce ?? 0), z);
         g.rotation.set(Math.atan(-roadYd(z)) * (same ? 1 : -1), Math.atan(roadXd(z)) + (same ? 0 : Math.PI) + (crash?.yaw ?? 0), crash?.roll ?? 0, "YXZ");
+        g.userData.reaction = n.reaction;
+        g.userData.speed = n.v;
+        g.userData.baseSpeed = n.base;
       }
     });
 

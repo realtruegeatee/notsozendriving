@@ -1,9 +1,18 @@
 import { ROAD_HALF } from "./road";
 
-export type ReactingCar = { s: number; lane: number; crashAge: number };
+export type TrafficReaction = "crash" | "accelerate" | "brake";
+export type ReactingCar = { s: number; lane: number; crashAge: number; reactionLeft?: number };
+export function chooseTrafficReaction(random: number): TrafficReaction {
+  return random < 1 / 3 ? "crash" : random < 2 / 3 ? "accelerate" : "brake";
+}
+export function reactionSpeed(base: number, reaction: TrafficReaction | null) {
+  if (reaction === "accelerate") return Math.min(32, base + 12);
+  if (reaction === "brake") return Math.max(2, base * 0.2);
+  return reaction === "crash" ? 0 : base;
+}
 export function threatenedTraffic(playerS: number, car: ReactingCar) {
   const ahead = car.s - playerS;
-  return car.crashAge < 0 && ahead > 4 && ahead < 55;
+  return car.crashAge < 0 && (car.reactionLeft ?? 0) <= 0 && ahead > 4 && ahead < 55;
 }
 export function shouldAutopilotSignal(auto: boolean, speed: number, cooldown: number, playerS: number, cars: ReactingCar[]) {
   return auto && speed > 4 && cooldown <= 0 && cars.some((car) => threatenedTraffic(playerS, car));

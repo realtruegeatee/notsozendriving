@@ -1,8 +1,23 @@
 import { expect, it } from "vitest";
 import { LANE, ROAD_HALF } from "./road";
-import { roadsideCrash, shouldAutopilotSignal, threatenedTraffic } from "./traffic-reaction";
+import { chooseTrafficReaction, reactionSpeed, roadsideCrash, shouldAutopilotSignal, threatenedTraffic } from "./traffic-reaction";
 
 const car = { s: 30, lane: LANE, crashAge: -1 };
+it("NPC reactions include a chance to crash, accelerate, or brake", () => {
+  expect(chooseTrafficReaction(0.1)).toBe("crash");
+  expect(chooseTrafficReaction(0.5)).toBe("accelerate");
+  expect(chooseTrafficReaction(0.9)).toBe("brake");
+});
+it("accelerating NPCs speed up and braking NPCs slow down", () => {
+  expect(reactionSpeed(16, "accelerate")).toBeGreaterThan(16);
+  expect(reactionSpeed(16, "brake")).toBeLessThan(16);
+  expect(reactionSpeed(16, "crash")).toBe(0);
+  expect(reactionSpeed(16, null)).toBe(16);
+});
+it("an NPC can finish its reaction before responding again", () => {
+  expect(threatenedTraffic(0, { ...car, reactionLeft: 4 })).toBe(false);
+  expect(threatenedTraffic(0, { ...car, reactionLeft: 0 })).toBe(true);
+});
 it("autopilot honks and flashes at nearby NPCs without spamming", () => {
   expect(shouldAutopilotSignal(true, 20, 0, 0, [car])).toBe(true);
   expect(shouldAutopilotSignal(true, 20, 1, 0, [car])).toBe(false);
