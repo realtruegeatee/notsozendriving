@@ -8,7 +8,7 @@ export const RIGHT_PASS_WAIT = 1.5;
 export function planAutodrive(z: number, speed: number, passing: Passing, cars: RoadCar[], blockedFor = 0, dt = 0, currentLane = passing === "right" ? RIGHT_PASS : passing ? -LANE : LANE) {
   const ahead = cars.filter((c) => c.same && Math.abs(c.lane - LANE) < 1.8 && z - c.z > -6 && z - c.z < 65);
   const blocker = ahead.filter((c) => c.speed < 29).sort((a, b) => Math.abs(z - a.z) - Math.abs(z - b.z))[0];
-  const blocked = (lane: number) => cars.some((c) => Math.abs(c.lane - lane) < 2.2 && z - c.z > -Math.max(10, (c.speed - speed) * 1.0) && z - c.z < (c.same ? Math.max(65, (speed - c.speed) * 1.5) : Math.max(85, (speed + c.speed) * 2)));
+  const blocked = (lane: number) => cars.some((c) => Math.abs(c.lane - lane) < 2.2 && z - c.z > -Math.max(10, (c.speed - speed) * 1.0) && z - c.z < (c.same ? Math.max(32, (speed - c.speed) * 1.0) : Math.max(50, (speed + c.speed) * 1.2)));
   const leftBlocked = blocked(-LANE), rightBlocked = blocked(RIGHT_PASS);
   const mergeSafe = !cars.some((c) => {
     if (Math.abs(c.lane - LANE) >= 2.2) return false;
