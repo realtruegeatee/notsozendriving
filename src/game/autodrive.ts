@@ -57,7 +57,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
     const futureLane = predictedLane(c, 0.8);
     const inPath = Math.max(c.lane, futureLane) > Math.min(currentLane, target) - 1.9 && Math.min(c.lane, futureLane) < Math.max(currentLane, target) + 1.9;
     return inPath && gap > -Math.max(10, (c.speed - speed) * 1.0) &&
-      gap < (c.same ? 12 : Math.max(25, (Math.max(0, speed) + c.speed) * 0.9));
+      gap < (c.same || c.speed < 1 ? 12 : Math.max(25, (Math.max(0, speed) + c.speed) * 0.9));
   });
   if (oncoming) {
     if (currentLane < 0 && mergeSafe && escapePathClear(LANE)) next = false;
@@ -84,7 +84,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
     // following the blocker during a real (non-instantaneous) lane change.
     if (c.same && gap >= 0 && gap < Math.max(22, speed * 0.6) && overlaps(c, currentLane) && Math.abs(lane - currentLane) > 0.5) targetSpeed = Math.min(targetSpeed, follow(c.speed, gap, 5));
     if (gap < 0 || !(inTarget || (inPath && gap < 10))) continue;
-    if (c.same) targetSpeed = Math.min(targetSpeed, follow(c.speed, gap, 7));
+    if (c.same || c.speed < 1) targetSpeed = Math.min(targetSpeed, follow(c.speed, gap, 7));
     else if (gap < Math.max(18, (speed + c.speed) * 0.9)) targetSpeed = Math.min(targetSpeed, gap < 25 ? 0 : CREEP);
   }
   return { lane, targetSpeed, passing: next, blockedFor: next ? 0 : waited };

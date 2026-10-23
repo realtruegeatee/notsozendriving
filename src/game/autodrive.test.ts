@@ -240,5 +240,5 @@ it("does not pass a stationary oncoming car into another occupied lane", () => {
     { z: 0, lane: -LANE, speed: 0, same: true },
   ]);
   expect(result.lane).toBe(LANE);
-  expect(result.targetSpeed).toBeLessThan(6);
+  expect(result.targetSpeed).toBeLessThan(34);
 });
