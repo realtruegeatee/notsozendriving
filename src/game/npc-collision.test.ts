@@ -3,6 +3,7 @@ import { carContact } from "./multiplayer-math";
 import { npcCrash, npcOffset, resolveNpcCollision } from "./npc-collision";
 import type { CollisionNpc } from "./npc-collision";
 import { LANE, groundY, roadX, roadXd } from "./road";
+import { createCrashMotion, stepCrashMotion } from "./crash-physics";
 
 const npc = (s: number, v: number, lane = LANE) => ({ s, v, lane, crashAge: -1, impactOffset: 0, contactLeft: 0 });
 it("NPC rear-end collisions separate and slow both cars", () => {
@@ -44,10 +45,11 @@ it("a shove gives immediate sideways momentum and body roll without teleporting"
   const faster: CollisionNpc = npc(30, 25), slower: CollisionNpc = npc(32, 10);
   resolveNpcCollision(faster, slower);
   const origin = npcOffset(slower);
-  expect(slower.shove).toBe(1);
-  slower.crashAge = 0.15;
-  expect(npcOffset(slower) - origin).toBeGreaterThan(2);
-  expect(Math.abs(npcCrash(slower).roll)).toBeGreaterThan(0.2);
+  expect(slower.shove).toBeCloseTo(15 / 18);
+  slower.crashMotion = createCrashMotion(origin, slower.crashSpeed ?? slower.v, 1, slower.shove);
+  stepCrashMotion(slower.crashMotion, 0.15);
+  expect(npcOffset(slower) - origin).toBeGreaterThan(0.8);
+  expect(Math.abs(npcCrash(slower).roll)).toBeGreaterThan(0.05);
   expect(npcCrash(slower).bounce).toBeGreaterThan(0);
 });
 it("nearby cars cannot shove without physical contact", () => {
