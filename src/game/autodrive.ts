@@ -50,3 +50,15 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
 }
 
 export function laneOffset(x: number, z: number) { return x - roadX(z); }
+// Stuck recovery: after crawling behind traffic for STUCK_AFTER s, back up briefly, then retry a pass.
+export const STUCK_AFTER = 2;
+export const REVERSE_FOR = 1.4;
+export function stepUnstick(stuckFor: number, reverseLeft: number, speed: number, targetSpeed: number, dt: number) {
+  if (reverseLeft > 0) {
+    const left = Math.max(0, reverseLeft - dt);
+    return { stuckFor: 0, reverseLeft: left, reversing: left > 0, retryPass: left === 0 };
+  }
+  const stuck = speed < 1.5 && targetSpeed < 4 ? stuckFor + dt : 0;
+  if (stuck >= STUCK_AFTER) return { stuckFor: 0, reverseLeft: REVERSE_FOR, reversing: true, retryPass: false };
+  return { stuckFor: stuck, reverseLeft: 0, reversing: false, retryPass: false };
+}
