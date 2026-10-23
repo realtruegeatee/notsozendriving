@@ -96,3 +96,7 @@ it("the nearest car in the way is the one that gets shoved", () => {
   const near = { ...slow, s: 8 }, far = { ...slow, s: 18 };
   expect(pickRunoffVictim(hot, [far, near])).toBe(near);
 });
+it("swerving cars can leave the road on either side", () => {
+  expect(roadsideCrash(5, LANE, LANE, 0, 1).offset).toBeGreaterThan(LANE);
+  expect(roadsideCrash(5, LANE, LANE, 0, -1).offset).toBeLessThan(-LANE);
+});
