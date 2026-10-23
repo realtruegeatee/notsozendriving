@@ -1,6 +1,7 @@
 import { useGLTF } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { Component, Suspense, useEffect, useMemo, useRef } from "react";
+import type { ReactNode } from "react";
 import * as THREE from "three";
 import { groundY, LANE, ROAD_HALF, roadX, roadXd, roadY, roadYd } from "./road";
 import { CARS, FEEL, game, hudEls, input, net } from "./store";
@@ -13,14 +14,55 @@ import type { TrafficReaction } from "./traffic-reaction";
 import { npcOffset, resolveNpcCollision } from "./npc-collision";
 
 const MODELS = ["sedan", "suv", "hatchback-sports", "taxi", "van", "truck", "sedan-sports"].map((m) => `/models/${m}.glb`);
-MODELS.forEach((m) => useGLTF.preload(m));
+MODELS.forEach((m) => { try { useGLTF.preload(m); } catch { /* retried on render */ } });
 
 export const headMat = new THREE.MeshStandardMaterial({ color: "#fff8e6", emissive: "#fff2cf", emissiveIntensity: 0.3, toneMapped: false });
 export const tailMat = new THREE.MeshStandardMaterial({ color: "#a3262a", emissive: "#ff2a2a", emissiveIntensity: 0.3, toneMapped: false });
 
 const CAR_LEN = 4.2;
 
-export function CarModel({ url, wheels, driverId }: { url: string; wheels?: React.MutableRefObject<THREE.Object3D[]>; driverId?: string }) {
+type CarModelProps = { url: string; wheels?: React.MutableRefObject<THREE.Object3D[]>; driverId?: string };
+
+function StandInCar() {
+  return (
+    <group>
+      <mesh position={[0, 0.55, 0]} castShadow>
+        <boxGeometry args={[1.8, 0.7, CAR_LEN]} />
+        <meshStandardMaterial color="#c9b79c" />
+      </mesh>
+      <mesh position={[0, 1.1, 0.2]} castShadow>
+        <boxGeometry args={[1.5, 0.5, 2]} />
+        <meshStandardMaterial color="#8a7d6a" />
+      </mesh>
+    </group>
+  );
+}
+
+// A failed model download (flaky mobile network) must never blank the game:
+// show a stand-in and retry the download a few seconds later.
+class CarModelBoundary extends Component<{ url: string; children: ReactNode }, { failed: boolean; attempt: number }> {
+  state = { failed: false, attempt: 0 };
+  private timer: ReturnType<typeof setTimeout> | undefined;
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch() {
+    if (this.state.attempt >= 5) return;
+    this.timer = setTimeout(() => {
+      useGLTF.clear(this.props.url);
+      this.setState((s) => ({ failed: false, attempt: s.attempt + 1 }));
+    }, 3000);
+  }
+  componentWillUnmount() { clearTimeout(this.timer); }
+  render() {
+    if (this.state.failed) return <StandInCar />;
+    return <Suspense key={this.state.attempt} fallback={<StandInCar />}>{this.props.children}</Suspense>;
+  }
+}
+
+export function CarModel(props: CarModelProps) {
+  return <CarModelBoundary url={props.url}><GltfCar {...props} /></CarModelBoundary>;
+}
+
+function GltfCar({ url, wheels, driverId }: CarModelProps) {
   const { scene } = useGLTF(url);
   const headlights = useMemo(() => headMat.clone(), []);
   useEffect(() => () => headlights.dispose(), [headlights]);
