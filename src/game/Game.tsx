@@ -7,6 +7,7 @@ import { Multiplayer } from "./Multiplayer";
 import { World, lampGlowMat, lampHeadMat } from "./World";
 import { game } from "./store";
 import type { CarId } from "./store";
+import { hasNpcTraffic } from "./multiplayer-math";
 
 const PALETTE = {
   day: { top: "#7fb0d6", horizon: "#f3dcc0", fog: "#ecd9c0", fogFar: 330, amb: 0.55, sun: 2.2, sunColor: "#fff0d8" },
@@ -78,7 +79,7 @@ export function Game({ night, car, room, name }: { night: boolean; car: CarId; r
       <Atmosphere night={night} />
       <Suspense fallback={null}>
         <World />
-        <Traffic car={car} />
+        <Traffic car={car} traffic={hasNpcTraffic(room)} />
       </Suspense>
       {room && <Multiplayer room={room} name={name} car={car} />}
     </Canvas>

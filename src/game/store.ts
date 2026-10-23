@@ -1,4 +1,6 @@
 // Shared mutable game state (read/written every frame, never drives React renders).
+import type { Pose } from "./multiplayer-math";
+
 export const game = {
   started: false,
   paused: false,
@@ -11,6 +13,8 @@ export const game = {
   speed: 0,
   distance: 0,
   shake: 0,
+  warp: 0,
+  flashUntil: 0,
   view: "chase" as "chase" | "cockpit",
 };
 
@@ -18,7 +22,12 @@ export const game = {
 export const net = {
   id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Math.random()),
   status: "offline" as "offline" | "connecting" | "online",
-  roster: [] as string[],
+  roster: [] as { id: string; name: string }[],
+  positions: new Map<string, Pose & { at: number }>(),
+  teleportTo: null as string | null,
+  ready: new Set<string>(),
+  flashes: new Map<string, number>(),
+  signal: null as null | ((kind: "horn" | "flash") => void),
   onRoster: null as null | (() => void),
 };
 

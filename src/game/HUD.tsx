@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Eye, Moon, Pause, Play, Sun, Gauge } from "lucide-react";
+import { Eye, Moon, Pause, Play, Sun, Gauge, Megaphone, Lamp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { flashLights, horn, initSignals } from "./signals";
 import { OnlinePicker, PlayersChip, RadioButton, newCode } from "./Lobby";
 import type { RoadMode } from "./Lobby";
 import { CARS, game, hudEls, input } from "./store";
@@ -180,6 +182,8 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
       input.keys[e.key.toLowerCase()] = true;
       if (e.key === "n") setNight(!game.night);
       if (e.key === "v") setView((v) => (v === "chase" ? "cockpit" : "chase"));
+      if (!e.repeat && e.code === "KeyH") horn();
+      if (!e.repeat && e.code === "KeyF") flashLights();
     };
     const up = (e: KeyboardEvent) => { input.keys[e.key.toLowerCase()] = false; };
     window.addEventListener("keydown", down);
@@ -191,6 +195,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
   useEffect(() => { game.cruise = cruise; }, [cruise]);
 
   const start = () => {
+    initSignals();
     const n = name.trim().slice(0, 16) || "Driver";
     localStorage.setItem("zen-name", n);
     const r = mode === "solo" ? null : mode === "public" ? "PUBLIC" : (code || newCode());
@@ -236,10 +241,14 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
         <div className="zen-actions">
           <RadioButton />
           <button className="zen-panel zen-icon" data-on={view === "cockpit"} aria-label="First person view" onClick={() => setView(view === "chase" ? "cockpit" : "chase")}><Eye size={18} /></button>
-          <button className="zen-panel zen-icon" data-on={cruise} aria-label="Auto cruise" onClick={() => setCruise(!cruise)}><Gauge size={18} /></button>
+          <button className="zen-panel zen-icon" data-on={cruise} aria-label="Autodrive" title="Autodrive" onClick={() => setCruise(!cruise)}><Gauge size={18} /></button>
           <button className="zen-panel zen-icon" aria-label="Day or night" onClick={() => setNight(!night)}>{night ? <Sun size={18} /> : <Moon size={18} />}</button>
           <button className="zen-panel zen-icon" aria-label="Pause" onClick={() => setPaused(!paused)}>{paused ? <Play size={18} /> : <Pause size={18} />}</button>
         </div>
+      </div>
+      <div className="zen-signals">
+        <Button variant="ghost" size="icon" className="zen-panel zen-icon" aria-label="Flash headlights" title="Flash headlights" onClick={flashLights}><Lamp size={18} /></Button>
+        <Button variant="ghost" size="icon" className="zen-panel zen-icon" aria-label="Horn" title="Horn" onClick={horn}><Megaphone size={18} /></Button>
       </div>
       {paused && (
         <div className="zen-overlay">
