@@ -1,6 +1,13 @@
 import { ROAD_HALF } from "./road";
 
-export type CrashMotion = { offset: number; lateral: number; speed: number; yaw: number; spin: number; roll: number; rollVelocity: number; bounce: number; vertical: number; side: number; restRoll: number };
+export type CrashMotion = { offset: number; lateral: number; speed: number; yaw: number; spin: number; roll: number; rollVelocity: number; bounce: number; vertical: number; side: number; restRoll: number; swerveTarget?: number };
+/** Avoidance starts with steering, not an impact impulse or an arbitrary spin. */
+export function createSwerveMotion(offset: number, speed: number, side: number, lateral = 0): CrashMotion {
+  const direction = Math.sign(side) || 1;
+  return { offset, speed, lateral, yaw: -Math.atan2(lateral, Math.max(0.1, speed)),
+    spin: 0, roll: 0, rollVelocity: 0, bounce: 0, vertical: 0,
+    side: direction, restRoll: direction * 0.04, swerveTarget: direction * (ROAD_HALF + 2.5) };
+}
 export function createCrashMotion(offset: number, speed: number, side: number, severity = 0): CrashMotion {
   const strength = Math.max(0, Math.min(2, severity));
   const direction = Math.sign(side) || 1;
@@ -19,6 +26,21 @@ export function stepCrashMotion(motion: CrashMotion, dt: number): number {
     const oldSpeed = motion.speed;
     motion.speed = reduce(motion.speed, (offroad ? 5 : 2.8) * h);
     distance += (oldSpeed + motion.speed) * 0.5 * h;
+    if (motion.swerveTarget !== undefined) {
+      const error = motion.swerveTarget - motion.offset;
+      // A bounded steering angle makes a curved exit, then countersteers to straighten in the grass.
+      const targetLateral = Math.max(-motion.speed * 0.38, Math.min(motion.speed * 0.38, error * 1.4));
+      const previousLateral = motion.lateral;
+      motion.lateral += (targetLateral - motion.lateral) * (1 - Math.exp(-6 * h));
+      if (motion.speed === 0 && Math.abs(motion.lateral) < 0.01) motion.lateral = 0;
+      motion.offset += (previousLateral + motion.lateral) * 0.5 * h;
+      const heading = -Math.atan2(motion.lateral, Math.max(0.5, motion.speed));
+      motion.yaw += (heading - motion.yaw) * (1 - Math.exp(-6 * h));
+      const lean = Math.max(-0.07, Math.min(0.07, -(motion.lateral - previousLateral) / h * 0.006));
+      motion.rollVelocity += (-28 * (motion.roll - (lean + (offroad ? motion.restRoll : 0))) - 8 * motion.rollVelocity) * h;
+      motion.roll += motion.rollVelocity * h;
+      continue;
+    }
     const oldLateral = motion.lateral;
     motion.lateral = reduce(motion.lateral, (offroad ? 3.6 : 1.6) * h);
     motion.offset += (oldLateral + motion.lateral) * 0.5 * h;

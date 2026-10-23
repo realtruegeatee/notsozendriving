@@ -10,7 +10,7 @@ export function npcOffset(car: CollisionNpc) {
 }
 function pose(car: CollisionNpc) {
   const z = -car.s, offset = npcOffset(car);
-  return { x: roadX(z) + offset, y: groundY(z, offset) + 0.03, z, yaw: Math.atan(roadXd(z)) + (car.lane > 0 ? 0 : Math.PI) + (car.crashAge < 0 ? 0 : npcCrash(car).yaw) };
+  return { x: roadX(z) + offset, y: groundY(z, offset) + 0.03, z, yaw: Math.atan(roadXd(z)) + (car.lane > 0 ? 0 : Math.PI) + (car.crashAge < 0 ? 0 : npcCrash(car).yaw * Math.sign(car.lane)) };
 }
 /** Each pair is separated symmetrically; impacts slow both cars, never accelerate a wreck. */
 export function resolveNpcCollision(a: CollisionNpc, b: CollisionNpc) {

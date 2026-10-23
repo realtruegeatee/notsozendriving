@@ -1,4 +1,6 @@
 # Roadmap
+- [x] Improve NPC avoidance swerves with steering-led motion and restrained body movement
+- [x] Make NPCs prefer overtaking and carry higher speed through passes
 - [x] Increase NPC aggression and crash frequency without freezing traffic
 - [x] Add temporary gameplay recording with download-and-delete
 - [x] Improve crashed-car momentum, skid and settling physics
