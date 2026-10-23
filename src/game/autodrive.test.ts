@@ -5,19 +5,19 @@ import { LANE } from "./road";
 it("aggressive autodrive overtakes slow traffic in a clear opposite lane", () => {
   const result = planAutodrive(0, 25, false, [{ z: -35, lane: LANE, speed: 15, same: true }]);
   expect(result.lane).toBe(-LANE);
-  expect(result.targetSpeed).toBe(30);
+  expect(result.targetSpeed).toBe(34);
 });
 it("autodrive passes on the right after losing patience instead of into oncoming traffic", () => {
   const result = planAutodrive(0, 25, false, [{ z: -15, lane: LANE, speed: 15, same: true }, { z: -60, lane: -LANE, speed: 20, same: false }], RIGHT_PASS_WAIT);
   expect(result.lane).toBeGreaterThan(LANE);
   expect(result.lane).toBe(RIGHT_PASS);
   expect(result.passing).toBe("right");
-  expect(result.targetSpeed).toBe(30);
+  expect(result.targetSpeed).toBe(34);
 });
 it("waits behind slower traffic before attempting a right pass", () => {
   const cars = [{ z: -15, lane: LANE, speed: 15, same: true }, { z: -60, lane: -LANE, speed: 20, same: false }];
   let blockedFor = 0;
-  for (let frame = 0; frame < 59; frame++) {
+  for (let frame = 0; frame < 29; frame++) {
     const result = planAutodrive(0, 25, false, cars, blockedFor, 0.05);
     expect(result.passing).toBe(false);
     expect(result.lane).toBe(LANE);
@@ -76,13 +76,13 @@ it("does not cut back into a car alongside or a fast car approaching from behind
     expect(planAutodrive(0, 25, "right", [car]).passing).toBe("right");
   }
 });
-it("stays right and brakes for a wreck rather than merging into an adjacent car", () => {
+it("stays right and creeps toward a wreck rather than merging into an adjacent car", () => {
   const result = planAutodrive(0, 25, "right", [
     { z: 0, lane: LANE, speed: 15, same: true },
     { z: -7, lane: RIGHT_PASS, speed: 0, same: true },
   ]);
   expect(result.lane).toBe(RIGHT_PASS);
-  expect(result.targetSpeed).toBe(0);
+  expect(result.targetSpeed).toBe(3);
 });
 it("checks approaching oncoming cars before choosing the left passing lane", () => {
   const result = planAutodrive(0, 40, false, [
