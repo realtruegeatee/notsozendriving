@@ -21,3 +21,4 @@
 - Horn audio is gesture-initialized Web Audio in src/game/signals.ts; horn and headlight flashes use discrete room broadcasts. Why: offline sounds and instant social signals without extra per-frame messages.
 - Scenery biomes (meadow, forest, desert, alpine, lake) are pure functions of road distance in src/game/road.ts and drive terrain height, colors and instancing in World.tsx. Why: deterministic, chunk-independent and testable.
 - The car's top-speed ceiling and its engine power curve are pure functions of distance in src/game/speed.ts, used by both the driving loop and the autopilot planner. Why: drag alone would settle the car below a raised ceiling, so the curve must stay testable and shared instead of tuned inside the frame loop.
+- Autopilot temperament (speed share, signals, ramming) is a pure profile in src/game/aggression.ts read via game.aggro. Why: one testable switch instead of scattered conditionals.
