@@ -1,7 +1,8 @@
-import { ROAD_HALF } from "./road";
+import { LANE, ROAD_HALF } from "./road";
 
 export type TrafficReaction = "crash" | "accelerate" | "brake";
 export type ReactingCar = { s: number; lane: number; crashAge: number; reactionLeft?: number };
+export type BlockedCar = ReactingCar & { v: number };
 /** Roadside wrecks stay rare; most threatened NPCs speed away, some slow down. */
 export const CRASH_CHANCE = 0.12;
 export const ACCELERATE_CHANCE = 0.58;
@@ -19,8 +20,17 @@ export function threatenedTraffic(playerS: number, car: ReactingCar) {
   const ahead = car.s - playerS;
   return car.crashAge < 0 && (car.reactionLeft ?? 0) <= 0 && ahead > 4 && ahead < 55;
 }
-export function shouldAutopilotSignal(auto: boolean, speed: number, cooldown: number, playerS: number, cars: ReactingCar[]) {
-  return auto && speed > 4 && cooldown <= 0 && cars.some((car) => threatenedTraffic(playerS, car));
+/** A car directly ahead in our lane that we are closing on fast enough to need to slow down. */
+export function mustSlowFor(playerS: number, playerLane: number, playerSpeed: number, car: BlockedCar) {
+  if (car.crashAge >= 0 || (car.reactionLeft ?? 0) > 0) return false;
+  const ahead = car.s - playerS;
+  if (ahead <= 2 || ahead > 45) return false;
+  if (Math.abs(car.lane - playerLane) > LANE * 0.7) return false;
+  const closing = playerSpeed - car.v;
+  return closing > 0.5 && ahead / closing < 6;
+}
+export function shouldAutopilotSignal(auto: boolean, speed: number, cooldown: number, playerS: number, playerLane: number, cars: BlockedCar[]) {
+  return auto && speed > 4 && cooldown <= 0 && cars.some((car) => mustSlowFor(playerS, playerLane, speed, car));
 }
 
 /** A short skid into the ditch, then a stationary, tilted roadside wreck. */
