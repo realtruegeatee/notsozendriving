@@ -2,6 +2,8 @@ import { carContact } from "./multiplayer-math";
 import { groundY, roadX, roadXd } from "./road";
 import { roadsideCrash } from "./traffic-reaction";
 import type { CrashMotion } from "./crash-physics";
+import { createSwerveMotion } from "./crash-physics";
+import type { Pose } from "./multiplayer-math";
 
 export type CollisionNpc = { s: number; lane: number; v: number; crashAge: number; impactOffset: number; contactLeft: number; passOffset?: number; crashOrigin?: number; shove?: number; crashSide?: number; crashMotion?: CrashMotion; crashSpeed?: number };
 export function npcCrash(car: CollisionNpc) { return car.crashMotion ?? roadsideCrash(car.crashAge, car.lane, car.crashOrigin, car.shove, car.crashSide); }
@@ -11,6 +13,28 @@ export function npcOffset(car: CollisionNpc) {
 function pose(car: CollisionNpc) {
   const z = -car.s, offset = npcOffset(car);
   return { x: roadX(z) + offset, y: groundY(z, offset) + 0.03, z, yaw: Math.atan(roadXd(z)) + (car.lane > 0 ? 0 : Math.PI) + (car.crashAge < 0 ? 0 : npcCrash(car).yaw * Math.sign(car.lane)) };
+}
+/** Only real rear-to-front contact with an active autopilot triggers this avoidance exit. */
+export function resolveAutopilotNpcContact(player: Pose, autopilot: boolean, car: CollisionNpc, lateral = 0) {
+  const npcPose = pose(car);
+  const push = carContact(player, npcPose);
+  if (!push) return null;
+  const dx = npcPose.x - player.x, dz = npcPose.z - player.z;
+  const behindPlayer = dx * Math.sin(player.yaw) + dz * Math.cos(player.yaw);
+  const aheadOfNpc = dx * Math.sin(npcPose.yaw) + dz * Math.cos(npcPose.yaw);
+  const aligned = Math.cos(player.yaw - npcPose.yaw) > 0.7;
+  if (autopilot && aligned && behindPlayer > 2.1 && aheadOfNpc > 2.1 && car.crashAge < 0 && car.contactLeft <= 0) {
+    const offset = npcOffset(car);
+    // Steer toward the nearer roadside; retain current lateral motion instead of teleporting.
+    car.crashSide = Math.sign(offset) || Math.sign(car.lane) || 1;
+    car.crashOrigin = offset;
+    car.impactOffset = 0;
+    car.shove = 0;
+    car.crashAge = 0;
+    car.contactLeft = 0.5;
+    car.crashMotion = createSwerveMotion(offset, car.v, car.crashSide, lateral);
+  }
+  return push;
 }
 /** Each pair is separated symmetrically; impacts slow both cars, never accelerate a wreck. */
 export function resolveNpcCollision(a: CollisionNpc, b: CollisionNpc) {
