@@ -11,6 +11,15 @@ export const game = {
   speed: 0,
   distance: 0,
   shake: 0,
+  view: "chase" as "chase" | "cockpit",
+};
+
+// Multiplayer connection info shown in the HUD.
+export const net = {
+  id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Math.random()),
+  status: "offline" as "offline" | "connecting" | "online",
+  roster: [] as string[],
+  onRoster: null as null | (() => void),
 };
 
 // Player-selectable cars (files in public/models).
