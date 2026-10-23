@@ -4,6 +4,8 @@ import { FEEL } from "./store";
 export const KMH_PER_MS = 3.6;
 export const SPEED_UNLOCK_KM = 5;
 export const UNLOCKED_MAX_KMH = 200;
+export const SECOND_UNLOCK_KM = 10;
+export const SECOND_MAX_KMH = 300;
 export const BASE_MAX_MS = FEEL.MAX;
 
 // Rolling drag alone would settle the car well below a raised ceiling, so the
@@ -13,6 +15,7 @@ const TAPER_PER_MS = 4.2;
 
 /** Top speed in m/s for a given distance driven along the road. */
 export function maxSpeedForDistance(distance: number): number {
+  if (distance >= SECOND_UNLOCK_KM * 1000) return SECOND_MAX_KMH / KMH_PER_MS;
   return distance >= SPEED_UNLOCK_KM * 1000 ? UNLOCKED_MAX_KMH / KMH_PER_MS : BASE_MAX_MS;
 }
 

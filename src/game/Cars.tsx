@@ -7,7 +7,7 @@ import { groundY, LANE, ROAD_HALF, roadX, roadXd, roadY, roadYd } from "./road";
 import { CARS, FEEL, game, hudEls, input, net } from "./store";
 import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
-import { planAutodrive, ramTarget, stepImpatience, stepUnstick } from "./autodrive";
+import { planAutodrive, ramTarget, stepBump, stepImpatience, stepUnstick } from "./autodrive";
 import { maxSpeedForDistance, powerCurve } from "./speed";
 import type { Passing } from "./autodrive";
 import { flashLights, horn } from "./signals";
@@ -133,7 +133,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
   const wheels = useRef<THREE.Object3D[]>([]);
   const spot = useRef<THREE.SpotLight>(null);
   const spotTarget = useMemo(() => new THREE.Object3D(), []);
-  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false });
+  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false, backingOff: false });
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
 
   useFrame((state, raw) => {
@@ -196,15 +196,20 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         if (u.retryPass) { S.passing = true; S.blockedFor = 0; }
         const lat0 = game.x - roadX(game.z);
         const target = ramTarget(game.z, lat0, cars);
-        const heldUp = plan.targetSpeed < Math.min(game.speed + 2, maxSpeedForDistance(game.distance) * 0.7);
-        const imp = stepImpatience(S.impatience, S.ramming, heldUp, !!target, dt);
+        // Only lose patience when no pass is possible.
+        const heldUp = !plan.passing && plan.targetSpeed < Math.min(game.speed + 2, maxSpeedForDistance(game.distance) * 0.7);
+        const imp = stepImpatience(S.impatience, S.ramming && !plan.passing, heldUp, !!target, dt);
         S.impatience = imp.impatience; S.ramming = imp.ramming;
         if (S.ramming && target) {
-          // Out of patience: floor it into the blocker until it is out of the way.
+          // Out of patience: bump it repeatedly — charge, hit, back off, charge again.
+          const gap = game.z - target.z;
+          S.backingOff = stepBump(S.backingOff, gap);
           const ramDesired = Math.atan2(lat0 - target.lane, game.z - target.z);
           steerIn = clamp((game.yaw - ramDesired) * 5, -1, 1);
-          thr = 1; brk = 0; reversing = false; S.reverseLeft = 0; S.stuckFor = 0;
-        }
+          reversing = false; S.reverseLeft = 0; S.stuckFor = 0;
+          if (S.backingOff) { thr = 0; brk = 1; }
+          else { thr = 1; brk = 0; }
+        } else S.backingOff = false;
       } else { S.passing = false; S.blockedFor = 0; S.stuckFor = 0; S.reverseLeft = 0; S.impatience = 0; S.ramming = false; }
       S.steer += (steerIn - S.steer) * damp(7, dt);
 
@@ -329,7 +334,12 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           if (!wasCrashing && n.crashAge >= 0) {
             n.reaction = "crash"; n.reactionLeft = 7; n.passing = false;
           }
-          game.speed *= n.lane > 0 ? 0.6 : 0.3;
+          if (n.lane > 0 && game.speed > n.v) {
+            // Push it: hand momentum to the car ahead instead of just stopping dead.
+            const share = (game.speed - n.v) * 0.6;
+            n.v += share; n.s += Math.min(1.5, share * 0.08);
+            game.speed -= share * 0.5;
+          } else game.speed *= n.lane > 0 ? 0.85 : 0.3;
           game.x += push.x; game.z += push.z;
           game.shake = 0.5;
         }
@@ -369,18 +379,24 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     game.shake *= Math.exp(-4 * dt);
     const sh = game.shake * (Math.random() - 0.5);
     if (fp) {
-      const eye = game.y + 1.15 + Math.sin(game.distance * 0.9) * 0.008 * Math.min(1, game.speed / 10);
+      // Driver's-eye view: seated left of centre, steady head, gentle look into corners.
+      const eye = game.y + 1.05 + Math.sin(game.distance * 0.9) * 0.004 * Math.min(1, game.speed / 10);
       S.camY = eye;
-      camera.position.set(game.x - Math.sin(game.yaw) * 0.3 + sh * 0.3, eye + sh * 0.3, game.z - Math.cos(game.yaw) * 0.3);
-      camera.lookAt(game.x - Math.sin(S.camYaw) * 20, roadY(game.z - Math.cos(game.yaw) * 20) + 1.0, game.z - Math.cos(S.camYaw) * 20);
-      camera.rotateZ(-S.roll * 0.6);
+      const side = -0.35, fwd = -0.1;
+      const cx = game.x + Math.cos(game.yaw) * side - Math.sin(game.yaw) * -fwd;
+      const cz = game.z - Math.sin(game.yaw) * side - Math.cos(game.yaw) * -fwd;
+      camera.position.set(cx + sh * 0.15, eye + sh * 0.15, cz);
+      const look = 30 + game.speed * 0.4;
+      const lookYaw = S.camYaw + S.steer * 0.12;
+      camera.lookAt(cx - Math.sin(lookYaw) * look, roadY(game.z - Math.cos(game.yaw) * look) + 0.9, cz - Math.cos(lookYaw) * look);
+      camera.rotateZ(-S.roll * 0.3);
     } else {
       const dist = 8.5 + game.speed * 0.05;
       S.camY += (game.y + 3.4 - S.camY) * damp(4, dt);
       camera.position.set(game.x + Math.sin(S.camYaw) * dist + sh, S.camY + sh, game.z + Math.cos(S.camYaw) * dist);
       camera.lookAt(game.x - Math.sin(game.yaw) * 8, game.y + 1.2, game.z - Math.cos(game.yaw) * 8);
     }
-    const fov = (fp ? 68 : 58) + game.speed * 0.35;
+    const fov = (fp ? 62 : 58) + Math.min(game.speed, 60) * (fp ? 0.25 : 0.35);
     if (Math.abs(camera.fov - fov) > 0.01) { camera.fov += (fov - camera.fov) * damp(3, dt); camera.updateProjectionMatrix(); }
 
     if (sun) {

@@ -15,3 +15,10 @@ test("only targets same-direction cars ahead in its lane", () => {
   expect(ramTarget(0, 2, [{ z: -10, lane: -2, same: false }])).toBeNull();
   expect(ramTarget(0, 2, [{ z: 10, lane: 2, same: true }])).toBeNull();
 });
+import { stepBump, BUMP_RUNUP } from "./autodrive";
+test("backs off after a bump and charges again from a run-up", () => {
+  expect(stepBump(false, 4)).toBe(true);
+  expect(stepBump(true, 6)).toBe(true);
+  expect(stepBump(true, BUMP_RUNUP)).toBe(false);
+  expect(stepBump(false, 8)).toBe(false);
+});
