@@ -111,11 +111,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+// After an update, a cached page can reference script files that no longer exist.
+// Clear the cached pages and reload once so the fresh version loads instead of a blank screen.
+const STALE_RECOVERY = `(function(){var k="zen-reload";function r(m){m=String(m||"");if(!/Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module/i.test(m))return;if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,"1");var go=function(){location.reload()};if(window.caches){caches.delete("pages").then(go,go)}else go()}addEventListener("error",function(e){var t=e.target;if(t&&t.tagName==="SCRIPT"&&t.type==="module")return r("Importing a module script failed");r(e.message||(e.error&&e.error.message))},true);addEventListener("unhandledrejection",function(e){r(e.reason&&e.reason.message||e.reason)});addEventListener("vite:preloadError",function(e){e.preventDefault();r("Failed to fetch dynamically imported module")});addEventListener("load",function(){setTimeout(function(){sessionStorage.removeItem(k)},5000)})})();`;
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: STALE_RECOVERY }} />
       </head>
       <body>
         {children}

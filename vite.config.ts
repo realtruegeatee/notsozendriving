@@ -47,11 +47,14 @@ export default defineConfig({
           maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
           navigateFallback: null,
           cleanupOutdatedCaches: true,
+          skipWaiting: true,
+          clientsClaim: true,
           runtimeCaching: [
             {
               urlPattern: ({ request, url }) => request.mode === "navigate" && !url.pathname.startsWith("/~oauth"),
               handler: "NetworkFirst",
-              options: { cacheName: "pages", networkTimeoutSeconds: 3, expiration: { maxEntries: 10 } },
+              // A short timeout served stale pages pointing at deleted script files after updates.
+              options: { cacheName: "pages", networkTimeoutSeconds: 10, expiration: { maxEntries: 10 } },
             },
             {
               urlPattern: ({ url }) => url.origin === "https://fonts.googleapis.com" || url.origin === "https://fonts.gstatic.com",
