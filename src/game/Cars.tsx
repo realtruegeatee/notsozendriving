@@ -12,7 +12,7 @@ import { planAutodrive, ramTarget, stepBump, stepImpatience, stepUnstick } from 
 import { maxSpeedForDistance, powerCurve } from "./speed";
 import type { Passing } from "./autodrive";
 import { flashLights, horn } from "./signals";
-import { chooseTrafficReaction, npcTargetSpeed, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
+import { chooseSporadicEvent, chooseTrafficReaction, npcTargetSpeed, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
 import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact } from "./npc-collision";
 import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
