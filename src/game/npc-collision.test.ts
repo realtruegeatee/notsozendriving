@@ -37,13 +37,39 @@ it("autopilot side contact does not trigger the rear-bumper swerve", () => {
   expect(resolveAutopilotNpcContact(playerPose(50), true, hit)).not.toBeNull();
   expect(hit.crashAge).toBe(-1);
 });
-it("nearby non-touching cars and head-on contact do not trigger the rear-bumper swerve", () => {
+it("nearby non-touching cars and slow head-on contact do not trigger the rear-bumper swerve", () => {
   const distant = npc(43, 25);
   expect(resolveAutopilotNpcContact(playerPose(50), true, distant)).toBeNull();
   expect(distant.crashAge).toBe(-1);
   const oncoming = { ...npc(47, 25, -LANE), impactOffset: 2 * LANE };
   expect(resolveAutopilotNpcContact(playerPose(50), true, oncoming)).not.toBeNull();
   expect(oncoming.crashAge).toBe(-1);
+});
+it("a hard player hit launches the NPC comically instead of just slowing it", () => {
+  const hit = npc(52, 10);
+  expect(resolveAutopilotNpcContact(playerPose(50), false, hit, 0, 30)).not.toBeNull();
+  expect(hit.crashAge).toBe(0);
+  expect(hit.shove).toBeGreaterThan(0);
+  expect(hit.crashMotion?.vertical).toBeGreaterThan(2);
+  expect(Math.abs(hit.crashMotion?.spin ?? 0)).toBeGreaterThan(1);
+  expect(Math.abs(hit.crashMotion?.rollVelocity ?? 0)).toBeGreaterThan(1);
+});
+it("a gentle player touch does not launch the NPC", () => {
+  const hit = npc(52, 20);
+  expect(resolveAutopilotNpcContact(playerPose(50), false, hit, 0, 24)).not.toBeNull();
+  expect(hit.crashAge).toBe(-1);
+});
+it("a fast head-on player hit launches the oncoming car", () => {
+  const hit = { ...npc(47, 25, -LANE), impactOffset: 2 * LANE };
+  expect(resolveAutopilotNpcContact(playerPose(50), false, hit, 0, 30)).not.toBeNull();
+  expect(hit.crashAge).toBe(0);
+  expect(hit.shove).toBeGreaterThan(0);
+});
+it("autopilot front-to-rear stun still wins over the launch", () => {
+  const hit = npc(53, 20);
+  expect(resolveAutopilotNpcContact(playerPose(50), true, hit, 0, 40)).not.toBeNull();
+  expect(hit.crashAge).toBe(-1);
+  expect(hit.stunLeft).toBe(STUN_FOR);
 });
 it("repeated autopilot contact never resets an existing swerve", () => {
   const hit: CollisionNpc = npc(47, 25);
