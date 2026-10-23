@@ -25,10 +25,14 @@ export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], des
   const passingLane = -car.lane;
   const passClear = !cars.some((o) => o !== car && Math.abs(lateral(o) - passingLane) < 2.1 && gap(o) > -18 && gap(o) < (o.lane * car.lane > 0 ? 55 : Math.max(90, (car.v + o.v) * 3)));
   const mergeClear = !homeCars.some((o) => gap(o) > -Math.max(8, 5 + (o.v - car.v) * 2) && gap(o) < Math.max(18, 6 + (car.v - o.v) * 2));
+  // Only start a pass with room to merge back in front of the blocker, never into a queue.
+  const mergeSlot = !!blocker && !homeCars.some((o) => o !== blocker && gap(o) > gap(blocker) - 2 && gap(o) < gap(blocker) + 22);
   let passing = car.passing;
   if (passing && mergeClear && (!blocker || !passClear)) passing = false;
-  else if (!passing && blocker && passClear) passing = true;
+  else if (!passing && blocker && passClear && mergeSlot) passing = true;
   let speed = desiredSpeed;
+  // Stuck beside traffic with the pass closing: drop back behind it so the merge opens up.
+  if (passing && !passClear && !mergeClear && blocker) speed = Math.min(speed, blocker.v * 0.6);
   const target = passing ? passingLane : car.lane;
   for (const other of cars) {
     if (other === car) continue;
@@ -37,10 +41,11 @@ export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], des
     const otherOffset = lateral(other);
     // Keep braking for the current lane until the car's footprint has moved clear.
     if (Math.abs(otherOffset - target) > 2.1 && Math.abs(otherOffset - offset) > 2.1) continue;
-    // Only the car out of its home lane yields fully; the other just eases off, so head-ons never deadlock.
+    // The car out of its home lane yields fully; the other eases off and only stops when very close.
     if (other.lane * car.lane < 0) {
       const outOfLane = passing || Math.abs(offset - car.lane) > 0.5;
-      speed = Math.min(speed, Math.max(outOfLane ? 0 : desiredSpeed * 0.6, (distance - 12) * 0.3));
+      const floor = outOfLane || distance < 25 ? 0 : desiredSpeed * 0.6;
+      speed = Math.min(speed, Math.max(floor, (distance - 12) * 0.3));
     }
     else speed = Math.min(speed, Math.max(0, other.v + (distance - 12) * 0.6));
   }
