@@ -66,7 +66,7 @@ export function groundY(z: number, u: number) {
   const t = smooth((a - 9) / 40);
   const w = biomeWeights(z);
   const hills = (5 + 4 * Math.sin(z * 0.013 + u * 0.03) + 3 * Math.sin(z * 0.031 - u * 0.07)) * (1 - 0.65 * w.desert) * (1 + 1.5 * w.alpine);
-  const peaks = w.alpine * smooth((a - 30) / 90) * (40 + 25 * Math.sin(z * 0.011 + u * 0.023));
+  const peaks = w.alpine * smooth((a - 45) / 100) * (28 + 18 * Math.sin(z * 0.011 + u * 0.023));
   const land = base + ditch + t * hills + peaks;
   const lake = lakeAmount(z, u) * smooth((a - 11) / 6);
   return land + (base - WATER_DROP - 1.6 - land) * lake;
