@@ -15,8 +15,8 @@ it("autopilot rear bumper touching an NPC front bumper starts a smooth roadside 
     expect(resolveAutopilotNpcContact(playerPose(50, offset), true, hit)).not.toBeNull();
     expect(hit.crashAge).toBe(0);
     expect(hit.crashMotion?.offset).toBe(origin);
-    expect(hit.crashMotion?.swerveTarget).toBe(Math.sign(offset) * 8);
-    expect(hit.crashMotion?.spin).toBe(0);
+    // An impulsive sideways kick toward the nearer roadside, then free physics.
+    expect((hit.crashMotion?.lateral ?? 0) * Math.sign(offset)).toBeGreaterThan(0);
     if (!hit.crashMotion) throw new Error("Missing swerve motion");
     stepCrashMotion(hit.crashMotion, 0.3);
     expect((npcOffset(hit) - origin) * Math.sign(offset)).toBeGreaterThan(0.2);

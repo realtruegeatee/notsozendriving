@@ -13,7 +13,7 @@ it("swerved cars slide out freely and come to rest instead of following a curve"
     const state = createSwerveMotion(LANE, 24, side);
     for (let i = 0; i < 1200; i++) stepCrashMotion(state, 1 / 60);
     expect(state.speed).toBe(0);
-    expect(state.lateral).toBe(0);
+    expect(Math.abs(state.lateral)).toBe(0);
     const rest = state.offset;
     stepCrashMotion(state, 1);
     expect(state.offset).toBe(rest);
