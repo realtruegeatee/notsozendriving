@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Moon, Pause, Play, Sun, Gauge } from "lucide-react";
+import { Eye, Moon, Pause, Play, Sun, Gauge } from "lucide-react";
+import { OnlinePicker, PlayersChip, RadioButton, newCode } from "./Lobby";
+import type { RoadMode } from "./Lobby";
 import { CARS, game, hudEls, input } from "./store";
 import type { CarId } from "./store";
 
@@ -147,23 +149,37 @@ function TimePicker({ night, setNight }: { night: boolean; setNight: (n: boolean
   );
 }
 
-export function HUD({ night, setNight, car, setCar }: { night: boolean; setNight: (n: boolean) => void; car: CarId; setCar: (c: CarId) => void }) {
+export function HUD({ night, setNight, car, setCar, room, onJoin }: {
+  night: boolean; setNight: (n: boolean) => void; car: CarId; setCar: (c: CarId) => void;
+  room: string | null; onJoin: (room: string | null, name: string) => void;
+}) {
   const [started, setStarted] = useState(false);
   const [paused, setPaused] = useState(false);
   const [cruise, setCruise] = useState(true);
   const [layout, setLayoutState] = useState<Layout>("wheel-left");
+  const [view, setView] = useState<"chase" | "cockpit">("chase");
+  const [mode, setMode] = useState<RoadMode>("solo");
+  const [name, setName] = useState("");
+  const [code, setCode] = useState(newCode);
 
   useEffect(() => {
     const saved = localStorage.getItem("zen-layout") as Layout | null;
     if (saved && LAYOUTS.some((l) => l.id === saved)) setLayoutState(saved);
+    if (localStorage.getItem("zen-view") === "cockpit") setView("cockpit");
+    setName(localStorage.getItem("zen-name") || `Driver${Math.floor(Math.random() * 900 + 100)}`);
+    const r = new URLSearchParams(location.search).get("room");
+    if (r) { setMode("private"); setCode(r.toUpperCase().slice(0, 6)); }
   }, []);
   const setLayout = (l: Layout) => { setLayoutState(l); localStorage.setItem("zen-layout", l); };
   const pickCar = (c: CarId) => { setCar(c); localStorage.setItem("zen-car", c); };
+  useEffect(() => { game.view = view; localStorage.setItem("zen-view", view); }, [view]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === "INPUT") return;
       input.keys[e.key.toLowerCase()] = true;
       if (e.key === "n") setNight(!game.night);
+      if (e.key === "v") setView((v) => (v === "chase" ? "cockpit" : "chase"));
     };
     const up = (e: KeyboardEvent) => { input.keys[e.key.toLowerCase()] = false; };
     window.addEventListener("keydown", down);
@@ -174,17 +190,27 @@ export function HUD({ night, setNight, car, setCar }: { night: boolean; setNight
   useEffect(() => { game.paused = paused; }, [paused]);
   useEffect(() => { game.cruise = cruise; }, [cruise]);
 
+  const start = () => {
+    const n = name.trim().slice(0, 16) || "Driver";
+    localStorage.setItem("zen-name", n);
+    const r = mode === "solo" ? null : mode === "public" ? "PUBLIC" : (code || newCode());
+    if (r && r !== "PUBLIC") { const u = new URL(location.href); u.searchParams.set("room", r); history.replaceState(null, "", u); }
+    onJoin(r, n);
+    game.started = true; setStarted(true);
+  };
+
   if (!started) {
     return (
       <div className="zen-overlay">
-        <div className="zen-card">
+        <div className="zen-card zen-scroll">
           <h1 className="zen-title">Zen Drive</h1>
           <p className="zen-sub">No timer, no finish line. Just keep driving.</p>
+          <OnlinePicker mode={mode} setMode={setMode} name={name} setName={setName} code={code} setCode={setCode} />
           <TimePicker night={night} setNight={setNight} />
           <CarPicker car={car} setCar={pickCar} />
           <LayoutPicker layout={layout} setLayout={setLayout} />
-          <button className="zen-start" onClick={() => { game.started = true; setStarted(true); }}>Start driving</button>
-          <p className="zen-hint">Keyboard: WASD or arrows, N switches day and night.</p>
+          <button className="zen-start" onClick={start}>Start driving</button>
+          <p className="zen-hint">Keyboard: WASD or arrows, N day/night, V camera view.</p>
         </div>
       </div>
     );
@@ -200,11 +226,16 @@ export function HUD({ night, setNight, car, setCar }: { night: boolean; setNight
   return (
     <div className="zen-hud">
       <div className="zen-top">
-        <div className="zen-panel zen-readout">
-          <span ref={(el) => { hudEls.speed = el; }} className="zen-num">0</span><span className="zen-unit">km/h</span>
-          <span ref={(el) => { hudEls.dist = el; }} className="zen-num">0.0</span><span className="zen-unit">km</span>
+        <div className="zen-left">
+          <div className="zen-panel zen-readout">
+            <span ref={(el) => { hudEls.speed = el; }} className="zen-num">0</span><span className="zen-unit">km/h</span>
+            <span ref={(el) => { hudEls.dist = el; }} className="zen-num">0.0</span><span className="zen-unit">km</span>
+          </div>
+          {room && <PlayersChip room={room} />}
         </div>
         <div className="zen-actions">
+          <RadioButton />
+          <button className="zen-panel zen-icon" data-on={view === "cockpit"} aria-label="First person view" onClick={() => setView(view === "chase" ? "cockpit" : "chase")}><Eye size={18} /></button>
           <button className="zen-panel zen-icon" data-on={cruise} aria-label="Auto cruise" onClick={() => setCruise(!cruise)}><Gauge size={18} /></button>
           <button className="zen-panel zen-icon" aria-label="Day or night" onClick={() => setNight(!night)}>{night ? <Sun size={18} /> : <Moon size={18} />}</button>
           <button className="zen-panel zen-icon" aria-label="Pause" onClick={() => setPaused(!paused)}>{paused ? <Play size={18} /> : <Pause size={18} />}</button>
