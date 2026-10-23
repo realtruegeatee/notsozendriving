@@ -196,3 +196,23 @@ it("manual driving does not stall a car hit from behind", () => {
   resolveAutopilotNpcContact(playerPose(50), false, hit);
   expect(hit.stunLeft).toBeUndefined();
 });
+it("crashes only start within the player's visible band", () => {
+  const car = npc(100, 20);
+  expect(crashVisible(50, car)).toBe(true);   // 50 m ahead
+  expect(crashVisible(50, npc(40, 20))).toBe(true);  // just behind
+  expect(crashVisible(50, npc(20, 20))).toBe(false); // too far behind
+  expect(crashVisible(50, npc(400, 20))).toBe(false); // too far ahead
+  expect(car.crashAge).toBe(-1);
+});
+it("NPC collisions out of sight separate and slow but never wreck", () => {
+  const a: CollisionNpc = npc(400, 25), b: CollisionNpc = npc(402, 5);
+  expect(resolveNpcCollision(a, b, crashVisible(50, a) || crashVisible(50, b))).toBe(true);
+  expect(a.crashAge).toBe(-1);
+  expect(b.crashAge).toBe(-1);
+  expect(b.v).toBeGreaterThan(0);
+});
+it("NPC collisions in sight still wreck one car", () => {
+  const a: CollisionNpc = npc(100, 25), b: CollisionNpc = npc(102, 5);
+  expect(resolveNpcCollision(a, b, crashVisible(50, a) || crashVisible(50, b))).toBe(true);
+  expect(a.crashAge >= 0 || b.crashAge >= 0).toBe(true);
+});
