@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Increase NPC aggression and crash frequency without freezing traffic
+- [x] Increase NPC aggression and crash frequency without freezing traffic
 - [x] Add temporary gameplay recording with download-and-delete
 - [x] Improve crashed-car momentum, skid and settling physics
 - [x] Multiplayer: public road + private room codes, nickname only (Lovable Cloud realtime)
