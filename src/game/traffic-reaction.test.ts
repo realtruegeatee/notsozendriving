@@ -8,6 +8,15 @@ it("NPC reactions include a chance to crash, accelerate, or brake", () => {
   expect(chooseTrafficReaction(0.5)).toBe("accelerate");
   expect(chooseTrafficReaction(0.9)).toBe("brake");
 });
+it("swerving off the road is rare and speeding up is the common reaction", () => {
+  expect(chooseTrafficReaction(0.2)).toBe("accelerate");
+  expect(chooseTrafficReaction(0.6)).toBe("accelerate");
+  expect(chooseTrafficReaction(0.69)).toBe("accelerate");
+  expect(chooseTrafficReaction(0.71)).toBe("brake");
+  expect(CRASH_CHANCE).toBeLessThan(0.2);
+  expect(ACCELERATE_CHANCE).toBeGreaterThan(0.5);
+  expect(CRASH_CHANCE + ACCELERATE_CHANCE + BRAKE_CHANCE).toBeCloseTo(1, 10);
+});
 it("accelerating NPCs speed up and braking NPCs slow down", () => {
   expect(reactionSpeed(16, "accelerate")).toBeGreaterThan(16);
   expect(reactionSpeed(16, "brake")).toBeLessThan(16);
