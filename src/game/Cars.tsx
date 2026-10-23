@@ -8,7 +8,7 @@ import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
 import { planAutodrive } from "./autodrive";
 import { flashLights, horn } from "./signals";
-import { chooseTrafficReaction, reactionSpeed, roadsideCrash, shouldAutopilotSignal, threatenedTraffic } from "./traffic-reaction";
+import { chooseTrafficReaction, pickRunoffVictim, reactionSpeed, roadsideCrash, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
 import { npcOffset, resolveNpcCollision } from "./npc-collision";
 
@@ -120,7 +120,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       const auto = game.cruise && !thr && !brk && Math.abs(steerIn) < 0.05;
       S.signalCooldown = Math.max(0, S.signalCooldown - dt);
       if (shouldAutopilotSignal(auto, game.speed, S.signalCooldown, ps, game.x - roadX(game.z), npcs)) {
-        horn(); flashLights(); S.signalCooldown = 2.2;
+        horn(); flashLights(); S.signalCooldown = SIGNAL_GAP;
         for (const n of npcs) if (threatenedTraffic(ps, n)) {
           n.reaction = chooseTrafficReaction(Math.random()); n.reactionLeft = 7;
           if (n.reaction === "crash") n.crashAge = 0;
@@ -219,6 +219,13 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       for (let i = 0; i < npcs.length; i++) for (let j = i + 1; j < npcs.length; j++) {
         const a = npcs[i], b = npcs[j];
         if (a && b) resolveNpcCollision(a, b);
+      }
+      // Road rage: a car that has sped up can run the slower car in front of it into the ditch.
+      for (const a of npcs) {
+        const victim = pickRunoffVictim(a, npcs);
+        if (!victim) continue;
+        victim.crashAge = 0; victim.reaction = null; victim.reactionLeft = 0;
+        a.reaction = null; a.reactionLeft = 0; // one shove per burst of speed
       }
     }
     npcs.forEach((n, i) => {

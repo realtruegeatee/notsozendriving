@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { LANE, ROAD_HALF } from "./road";
-import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, reactionSpeed, roadsideCrash, shouldAutopilotSignal, threatenedTraffic } from "./traffic-reaction";
+import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, pickRunoffVictim, reactionSpeed, roadsideCrash, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 
 const car = { s: 30, lane: LANE, crashAge: -1, v: 10 };
 it("NPC reactions include a chance to crash, accelerate, or brake", () => {
@@ -37,9 +37,27 @@ it("no signal unless the car ahead forces us to slow down", () => {
   expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [{ ...car, v: 26 }])).toBe(false); // pulling away
   expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [{ ...car, s: 100 }])).toBe(false); // far ahead
   expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [{ ...car, s: 1 }])).toBe(false); // alongside
-  expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [{ ...car, reactionLeft: 3 }])).toBe(false);
+  expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [{ ...car, reactionLeft: 3 }])).toBe(true); // still in the way
   expect(mustSlowFor(0, LANE, 20, car)).toBe(true);
   expect(mustSlowFor(0, LANE, 20, { ...car, crashAge: 2 })).toBe(false);
+});
+it("blares again and again while a car is still blocking the lane", () => {
+  let cooldown = 0, fired = 0;
+  for (let t = 0; t < 5; t += 1 / 60) {
+    cooldown = Math.max(0, cooldown - 1 / 60);
+    if (shouldAutopilotSignal(true, 20, cooldown, 0, LANE, [car])) { fired++; cooldown = SIGNAL_GAP; }
+  }
+  expect(fired).toBeGreaterThanOrEqual(4);
+  expect(SIGNAL_GAP).toBeLessThan(1);
+});
+it("falls silent once the car ahead is no longer in the way", () => {
+  let cooldown = 0, fired = 0;
+  for (let t = 0; t < 5; t += 1 / 60) {
+    cooldown = Math.max(0, cooldown - 1 / 60);
+    const blocking = t < 0.5 ? [car] : [{ ...car, v: 26 }];
+    if (shouldAutopilotSignal(true, 20, cooldown, 0, LANE, blocking)) { fired++; cooldown = SIGNAL_GAP; }
+  }
+  expect(fired).toBe(1);
 });
 it("only nearby cars ahead react, and wrecks do not react again", () => {
   expect(threatenedTraffic(0, car)).toBe(true);
@@ -57,4 +75,20 @@ it("NPCs skid to the roadside on their own side and remain crashed", () => {
     expect(wreck.yaw).not.toBe(0);
     expect(roadsideCrash(10, lane).offset).toBe(wreck.offset);
   }
+});
+it("an accelerating NPC runs a slower car in its lane off the street", () => {
+  const hot = { s: 0, lane: LANE, crashAge: -1, v: 26, reaction: "accelerate" as const };
+  const slow = { s: 12, lane: LANE, crashAge: -1, v: 12, reaction: null };
+  expect(pickRunoffVictim(hot, [slow])).toBe(slow);
+  expect(pickRunoffVictim({ ...hot, reaction: null }, [slow])).toBeNull();
+  expect(pickRunoffVictim(hot, [{ ...slow, lane: -LANE }])).toBeNull();
+  expect(pickRunoffVictim(hot, [{ ...slow, v: 25 }])).toBeNull();
+  expect(pickRunoffVictim(hot, [{ ...slow, s: 200 }])).toBeNull();
+  expect(pickRunoffVictim(hot, [{ ...slow, crashAge: 1 }])).toBeNull();
+});
+it("the nearest car in the way is the one that gets shoved", () => {
+  const hot = { s: 0, lane: LANE, crashAge: -1, v: 26, reaction: "accelerate" as const };
+  const slow = { s: 12, lane: LANE, crashAge: -1, v: 12, reaction: null };
+  const near = { ...slow, s: 8 }, far = { ...slow, s: 18 };
+  expect(pickRunoffVictim(hot, [far, near])).toBe(near);
 });
