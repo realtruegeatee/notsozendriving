@@ -2,13 +2,14 @@ import { carContact } from "./multiplayer-math";
 import { groundY, roadX, roadXd } from "./road";
 import { roadsideCrash } from "./traffic-reaction";
 
-export type CollisionNpc = { s: number; lane: number; v: number; crashAge: number; impactOffset: number; contactLeft: number };
+export type CollisionNpc = { s: number; lane: number; v: number; crashAge: number; impactOffset: number; contactLeft: number; passOffset?: number; crashOrigin?: number; shove?: number };
+export function npcCrash(car: CollisionNpc) { return roadsideCrash(car.crashAge, car.lane, car.crashOrigin, car.shove); }
 export function npcOffset(car: CollisionNpc) {
-  return (car.crashAge < 0 ? car.lane : roadsideCrash(car.crashAge, car.lane).offset) + car.impactOffset;
+  return (car.crashAge < 0 ? car.lane + (car.passOffset ?? 0) : npcCrash(car).offset) + car.impactOffset;
 }
 function pose(car: CollisionNpc) {
   const z = -car.s, offset = npcOffset(car);
-  return { x: roadX(z) + offset, y: groundY(z, offset) + 0.03, z, yaw: Math.atan(roadXd(z)) + (car.lane > 0 ? 0 : Math.PI) + (car.crashAge < 0 ? 0 : roadsideCrash(car.crashAge, car.lane).yaw) };
+  return { x: roadX(z) + offset, y: groundY(z, offset) + 0.03, z, yaw: Math.atan(roadXd(z)) + (car.lane > 0 ? 0 : Math.PI) + (car.crashAge < 0 ? 0 : npcCrash(car).yaw) };
 }
 /** Each pair is separated symmetrically; impacts slow both cars, never accelerate a wreck. */
 export function resolveNpcCollision(a: CollisionNpc, b: CollisionNpc) {
@@ -31,6 +32,11 @@ export function resolveNpcCollision(a: CollisionNpc, b: CollisionNpc) {
     a.contactLeft = 0.5; b.contactLeft = 0.5;
   }
   // A forceful hit starts the existing roadside skid; wreck physics then stops the victim.
-  if (shove) slower.crashAge = 0;
+  if (shove) {
+    slower.crashOrigin = npcOffset(slower);
+    slower.impactOffset = 0;
+    slower.shove = 1;
+    slower.crashAge = 0;
+  }
   return true;
 }
