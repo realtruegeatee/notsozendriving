@@ -78,6 +78,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     }
     return arr;
   }, [traffic]);
+  if (import.meta.env.DEV) (window as unknown as { __npcs?: Npc[] }).__npcs = npcs; // temporary check hook
   const refs = useRef<(THREE.Group | null)[]>([]);
   const player = useRef<THREE.Group>(null);
   const body = useRef<THREE.Group>(null);
