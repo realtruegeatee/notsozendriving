@@ -258,7 +258,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           n.crashAge = -1;
           n.reaction = null; n.reactionLeft = 0;
           n.impactOffset = 0; n.contactLeft = 0;
-          n.passOffset = 0; n.passing = false; n.crashOrigin = undefined; n.shove = 0; n.laneVelocity = 0;
+          n.passOffset = 0; n.passing = false; delete n.crashOrigin; n.shove = 0; n.laneVelocity = 0;
         }
         // gentle bump
         const offset = npcOffset(n);
