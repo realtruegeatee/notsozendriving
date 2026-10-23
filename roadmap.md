@@ -44,3 +44,4 @@
 - [ ] Dashcam view showing the car's front
 - [ ] AI aggressiveness selector
 - [ ] Fix radio on the website
+- [ ] Autopilot rear-hit car stops, gets shoved aside, resumes after 3 s
