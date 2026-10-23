@@ -85,3 +85,14 @@ it("A home-lane NPC only eases off for an oncoming passer instead of stopping", 
   const home = npc(0, 20), passer = { ...npc(20, 20, -LANE), passOffset: 2 * LANE, passing: true };
   expect(planNpcDriving(home, [home, passer], 20).speed).toBeCloseTo(12);
 });
+
+it("NPCs do not pull out when there is no gap ahead of the slow car to merge into", () => {
+  const fast = npc(0, 22), slow = npc(20, 12), queue = npc(30, 12);
+  expect(planNpcDriving(fast, [fast, slow, queue], 22).passing).toBe(false);
+});
+
+it("A stuck passer drops back below the slow car when oncoming traffic closes in", () => {
+  const passer = { ...npc(0, 18), passOffset: -2 * LANE, passing: true };
+  const slow = npc(2, 12), oncoming = npc(70, 20, -LANE);
+  expect(planNpcDriving(passer, [passer, slow, oncoming], 22).speed).toBeLessThan(12);
+});
