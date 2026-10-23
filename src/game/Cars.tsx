@@ -13,7 +13,7 @@ import { flashLights, horn } from "./signals";
 import { chooseTrafficReaction, npcTargetSpeed, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
 import { npcCrash, npcOffset, resolveNpcCollision } from "./npc-collision";
-import { planNpcDriving } from "./npc-driving";
+import { planNpcDriving, stepNpcLane } from "./npc-driving";
 
 const MODELS = ["sedan", "suv", "hatchback-sports", "taxi", "van", "truck", "sedan-sports"].map((m) => `/models/${m}.glb`);
 // No useGLTF.preload: a rejected preload is an unhandled error on flaky networks.
@@ -109,7 +109,7 @@ function GltfCar({ url, wheels, driverId }: CarModelProps) {
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number };
+type Npc = { s: number; lane: number; v: number; base: number; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number };
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
   const npcs = useMemo<Npc[]>(() => {
@@ -118,7 +118,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     for (let i = 0; i < 10; i++) {
       const same = i < 6;
       const base = same ? 12 + Math.random() * 7 : 17 + Math.random() * 6;
-      arr.push({ s: 40 + i * 55 + Math.random() * 30, lane: same ? LANE : -LANE, v: base, base, crashAge: -1, reaction: null, reactionLeft: 0, impactOffset: 0, contactLeft: 0, passOffset: 0, passing: false, shove: 0, laneVelocity: 0, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
+      arr.push({ s: 40 + i * 55 + Math.random() * 30, lane: same ? LANE : -LANE, v: base, base, crashAge: -1, reaction: null, reactionLeft: 0, impactOffset: 0, contactLeft: 0, passOffset: 0, passing: false, shove: 0, laneVelocity: 0, laneRoll: 0, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
     }
     return arr;
   }, [traffic]);
@@ -224,7 +224,11 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
 
     // NPCs
     const pLat = game.x - roadX(game.z);
-    npcs.forEach((n) => {
+    // Plan from one shared snapshot, so array order cannot change passing decisions.
+    const nearby = npcs.map((n) => ({ ...n, offset: npcOffset(n) }));
+    nearby.push({ ...nearby[0], s: -game.z, lane: LANE, offset: pLat, passOffset: pLat - LANE, v: game.speed, base: game.speed, crashAge: -1, passing: false } as (typeof nearby)[number]);
+    const plans = active ? nearby.slice(0, npcs.length).map((n) => planNpcDriving(n, nearby, npcTargetSpeed(n.base, n.reactionLeft > dt ? n.reaction : null, n.crashAge >= 0))) : [];
+    npcs.forEach((n, i) => {
       const same = n.lane > 0;
       if (active) {
         n.contactLeft = Math.max(0, n.contactLeft - dt);
@@ -235,12 +239,14 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         if (!crashing && n.reactionLeft === 0) n.reaction = null;
         let target = npcTargetSpeed(n.base, n.reaction, crashing);
         if (!crashing) {
-          const nearby = [...npcs, { s: ps, lane: LANE, passOffset: pLat - LANE, v: game.speed, base: game.speed, crashAge: -1, passing: false }];
-          const plan = planNpcDriving(n, nearby, target);
+          const plan = plans[i];
+          if (!plan) return;
           n.passing = plan.passing;
-          const previousOffset = n.passOffset;
-          n.passOffset += clamp(plan.passOffset - n.passOffset, -2.8 * dt, 2.8 * dt);
-          n.laneVelocity = dt > 0 ? (n.passOffset - previousOffset) / dt : 0;
+          const previousVelocity = n.laneVelocity;
+          const laneStep = stepNpcLane(n.passOffset, n.laneVelocity, plan.passOffset, n.v, dt);
+          n.passOffset = laneStep.offset; n.laneVelocity = laneStep.velocity;
+          const lean = clamp(-(n.laneVelocity - previousVelocity) / Math.max(dt, 0.001) * Math.sign(n.lane) * 0.012, -0.06, 0.06);
+          n.laneRoll += (lean - n.laneRoll) * damp(6, dt);
           target = plan.speed;
         }
         if (same && !crashing) {
@@ -258,14 +264,16 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           n.crashAge = -1;
           n.reaction = null; n.reactionLeft = 0;
           n.impactOffset = 0; n.contactLeft = 0;
-          n.passOffset = 0; n.passing = false; delete n.crashOrigin; n.shove = 0; n.laneVelocity = 0;
+          n.passOffset = 0; n.passing = false; delete n.crashOrigin; n.shove = 0; n.laneVelocity = 0; n.laneRoll = 0;
         }
-        // gentle bump
-        const offset = npcOffset(n);
-        if (Math.abs(n.s - ps) < CAR_LEN && Math.abs(pLat - offset) < 1.9) {
-          game.speed *= same ? 0.6 : 0.3;
-          if (n.s > ps) game.z = -(n.s - CAR_LEN);
-          else n.s = ps - CAR_LEN;
+      }
+      // Contact after NPC pair separation, using the player's current position.
+      for (const n of npcs) {
+        const playerS = -game.z;
+        if (Math.abs(n.s - playerS) < CAR_LEN && Math.abs(game.x - roadX(game.z) - npcOffset(n)) < 1.9) {
+          game.speed *= n.lane > 0 ? 0.6 : 0.3;
+          if (n.s > playerS) game.z = -(n.s - CAR_LEN);
+          else n.s = playerS - CAR_LEN;
           game.shake = 0.5;
         }
       }
@@ -291,7 +299,9 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const crash = n.crashAge < 0 ? null : npcCrash(n);
         const offset = npcOffset(n);
         g.position.set(roadX(z) + offset, (crash ? groundY(z, offset) + 0.03 : roadY(z)) + (crash?.bounce ?? 0), z);
-        g.rotation.set(Math.atan(-roadYd(z)) * (same ? 1 : -1), Math.atan(roadXd(z)) + (same ? 0 : Math.PI) + (crash?.yaw ?? -Math.atan2(n.laneVelocity * (same ? 1 : -1), Math.max(4, n.v))), crash?.roll ?? -n.laneVelocity * 0.035, "YXZ");
+        const direction = same ? 1 : -1;
+        const drivingYaw = Math.atan(roadXd(z) - n.laneVelocity / (direction * Math.max(4, n.v))) + (same ? 0 : Math.PI);
+        g.rotation.set(Math.atan(-roadYd(z)) * direction, crash ? Math.atan(roadXd(z)) + (same ? 0 : Math.PI) + crash.yaw : drivingYaw, crash?.roll ?? n.laneRoll, "YXZ");
         g.userData["reaction"] = n.reaction;
         g.userData["speed"] = n.v;
         g.userData["baseSpeed"] = n.base;
