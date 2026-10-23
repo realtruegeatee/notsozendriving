@@ -20,6 +20,11 @@ function pose(car: CollisionNpc) {
 export function impactSpeed(playerSpeed: number, car: CollisionNpc) {
   return car.lane > 0 ? Math.max(0, playerSpeed - car.v) : playerSpeed + car.v;
 }
+/** A crash may only start where the player can actually see it: just behind the car to ~260 m ahead. */
+export function crashVisible(playerS: number, car: CollisionNpc) {
+  const ds = car.s - playerS;
+  return ds > -15 && ds < 260;
+}
 /** Only real rear-to-front contact with an active autopilot triggers this avoidance exit. */
 export function resolveAutopilotNpcContact(player: Pose, autopilot: boolean, car: CollisionNpc, lateral = 0, playerSpeed = 0) {
   const npcPose = pose(car);
@@ -68,8 +73,8 @@ export function resolveAutopilotNpcContact(player: Pose, autopilot: boolean, car
   }
   return push;
 }
-/** Separate both footprints; one active victim crashes while the survivor recovers. */
-export function resolveNpcCollision(a: CollisionNpc, b: CollisionNpc) {
+/** Separate both footprints; one active victim crashes while the survivor recovers. When allowWreck is false the cars only separate and slow — no crash starts out of the player's sight. */
+export function resolveNpcCollision(a: CollisionNpc, b: CollisionNpc, allowWreck = true) {
   const pa = pose(a), pb = pose(b), push = carContact(pa, pb);
   if (!push) return false;
   const freshImpact = a.contactLeft <= 0 && b.contactLeft <= 0;
