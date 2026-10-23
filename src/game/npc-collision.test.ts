@@ -22,3 +22,20 @@ it("an oncoming NPC hitting another car loses speed", () => {
   expect(resolveNpcCollision(a, b)).toBe(true);
   expect(a.v).toBe(4); expect(b.v).toBe(4);
 });
+it("a forceful NPC collision pushes the slower car off the road without a horn reaction", () => {
+  for (const lane of [LANE, -LANE]) {
+    const direction = Math.sign(lane);
+    const faster = npc(30, 25, lane), slower = npc(30 + direction * 2, 10, lane);
+    expect(resolveNpcCollision(faster, slower)).toBe(true);
+    expect(slower.crashAge).toBe(0);
+    expect(faster.crashAge).toBe(-1);
+    slower.crashAge = 2;
+    expect(Math.abs(npcOffset(slower))).toBeGreaterThan(5.5);
+  }
+});
+it("gentle NPC bumps do not run cars off the road", () => {
+  const a = npc(30, 15), b = npc(32, 12);
+  expect(resolveNpcCollision(a, b)).toBe(true);
+  expect(a.crashAge).toBe(-1);
+  expect(b.crashAge).toBe(-1);
+});
