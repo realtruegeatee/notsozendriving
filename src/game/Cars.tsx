@@ -317,6 +317,16 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
             : createSwerveMotion(n.crashOrigin ?? npcOffset(n), n.v, n.crashSide ?? Math.sign(n.lane), n.laneVelocity);
           n.s += (same ? 1 : -1) * stepCrashMotion(n.crashMotion, dt);
           n.v = n.crashMotion.speed;
+          // A wreck that stopped on the road shakes itself off and drives again.
+          if (canDriveAgain(n.crashMotion)) {
+            n.restFor = (n.restFor ?? 0) + dt;
+            if (n.restFor > 2.5) {
+              n.crashAge = -1; delete n.crashMotion; delete n.crashSpeed;
+              n.reaction = null; n.reactionLeft = 0; n.restFor = 0;
+              n.passOffset = npcOffset(n) - n.lane; n.laneVelocity = 0;
+              n.recoveryLeft = 2; n.v = 0;
+            }
+          } else n.restFor = 0;
         } else {
           n.v += (target - n.v) * damp(n.reaction === "brake" ? 3.5 : 2, dt);
           n.s += (same ? 1 : -1) * n.v * dt;
