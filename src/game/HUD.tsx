@@ -6,6 +6,7 @@ import { OnlinePicker, PlayersChip, RadioButton, newCode } from "./Lobby";
 import type { RoadMode } from "./Lobby";
 import { CARS, game, hudEls, input } from "./store";
 import type { CarId } from "./store";
+import { RecordingButton } from "./RecordingButton";
 
 export type Layout = "wheel-left" | "wheel-right" | "slider";
 const LAYOUTS: { id: Layout; label: string; mini: React.ReactNode }[] = [
@@ -246,6 +247,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
           {room && <PlayersChip room={room} />}
         </div>
         <div className="zen-actions">
+          <RecordingButton />
           <RadioButton />
           <button className="zen-panel zen-icon" data-on={view === "cockpit"} aria-label="First person view" onClick={() => setView(view === "chase" ? "cockpit" : "chase")}><Eye size={18} /></button>
           <button className="zen-panel zen-icon" data-on={cruise} aria-label="Autodrive" title="Autodrive" onClick={() => setCruise(!cruise)}><Gauge size={18} /></button>
