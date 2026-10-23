@@ -14,7 +14,7 @@ import type { TrafficReaction } from "./traffic-reaction";
 import { npcOffset, resolveNpcCollision } from "./npc-collision";
 
 const MODELS = ["sedan", "suv", "hatchback-sports", "taxi", "van", "truck", "sedan-sports"].map((m) => `/models/${m}.glb`);
-MODELS.forEach((m) => { try { useGLTF.preload(m); } catch { /* retried on render */ } });
+// No useGLTF.preload: a rejected preload is an unhandled error on flaky networks.
 
 export const headMat = new THREE.MeshStandardMaterial({ color: "#fff8e6", emissive: "#fff2cf", emissiveIntensity: 0.3, toneMapped: false });
 export const tailMat = new THREE.MeshStandardMaterial({ color: "#a3262a", emissive: "#ff2a2a", emissiveIntensity: 0.3, toneMapped: false });
@@ -41,18 +41,18 @@ function StandInCar() {
 // A failed model download (flaky mobile network) must never blank the game:
 // show a stand-in and retry the download a few seconds later.
 class CarModelBoundary extends Component<{ url: string; children: ReactNode }, { failed: boolean; attempt: number }> {
-  state = { failed: false, attempt: 0 };
+  override state = { failed: false, attempt: 0 };
   private timer: ReturnType<typeof setTimeout> | undefined;
   static getDerivedStateFromError() { return { failed: true }; }
-  componentDidCatch() {
+  override componentDidCatch() {
     if (this.state.attempt >= 5) return;
     this.timer = setTimeout(() => {
       useGLTF.clear(this.props.url);
       this.setState((s) => ({ failed: false, attempt: s.attempt + 1 }));
     }, 3000);
   }
-  componentWillUnmount() { clearTimeout(this.timer); }
-  render() {
+  override componentWillUnmount() { clearTimeout(this.timer); }
+  override render() {
     if (this.state.failed) return <StandInCar />;
     return <Suspense key={this.state.attempt} fallback={<StandInCar />}>{this.props.children}</Suspense>;
   }
