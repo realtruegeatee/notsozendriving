@@ -161,3 +161,30 @@ it("holds the unlocked 200 km/h ceiling without rear-ending slower traffic", () 
   expect(speed * 3.6).toBeGreaterThanOrEqual(190);
   expect(closest).toBeGreaterThan(5);
 });
+it("recognises an oncoming overtaker in our lane and escapes right before stopping", () => {
+  const result = planAutodrive(0, 25, false, [{ z: -85, lane: LANE, speed: 30, same: false }]);
+  expect(result.lane).toBe(RIGHT_PASS);
+  expect(result.passing).toBe("right");
+  expect(result.targetSpeed).toBe(34);
+});
+it("holds the escape until the oncoming overtaker has passed, then returns", () => {
+  const car = { z: -85, lane: LANE, speed: 30, same: false };
+  expect(planAutodrive(0, 25, "right", [car], 0, 0.05, RIGHT_PASS).lane).toBe(RIGHT_PASS);
+  expect(planAutodrive(0, 25, "right", [{ ...car, z: 15 }], 0, 0.05, RIGHT_PASS).lane).toBe(LANE);
+});
+it("does not evade into an occupied right escape or through a car alongside", () => {
+  for (const obstruction of [RIGHT_PASS, 3.2]) {
+    const result = planAutodrive(0, 25, false, [
+      { z: -40, lane: LANE, speed: 30, same: false },
+      { z: 0, lane: obstruction, speed: 20, same: true },
+      { z: -60, lane: -LANE, speed: 30, same: false },
+    ]);
+    expect(result.lane).toBe(LANE);
+    expect(result.targetSpeed).toBeLessThan(25);
+  }
+});
+it("returns home from a left pass when oncoming traffic threatens the actual lane", () => {
+  const result = planAutodrive(0, 25, true, [{ z: -85, lane: -LANE, speed: 30, same: false }], 0, 0.05, -LANE);
+  expect(result.lane).toBe(LANE);
+  expect(result.targetSpeed).toBe(34);
+});

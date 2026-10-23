@@ -13,7 +13,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   const mergeSafe = !cars.some((c) => {
     if (Math.abs(c.lane - LANE) >= 2.2) return false;
     const gap = z - c.z;
-    const aheadGap = c.same ? 8 + Math.max(0, speed - c.speed) * 0.6 : Math.max(45, (speed + c.speed) * 1.15);
+    const aheadGap = c.same ? 8 + Math.max(0, speed - c.speed) * 0.6 : Math.max(90, (speed + c.speed) * 3);
     const behindGap = 6 + (c.same ? Math.max(0, c.speed - speed) * 0.8 : 0);
     return gap > -behindGap && gap < aheadGap;
   });
@@ -27,6 +27,23 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   } else if (passing ? ahead.length > 0 : Boolean(blocker)) {
     if (!leftBlocked) next = true;
     else if (!rightBlocked && (passing || waited >= RIGHT_PASS_WAIT)) next = "right";
+  }
+  // Direction comes from the NPC's home lane, not its overtaking offset.
+  // Spot an oncoming overtaker early enough to steer out, rather than merely
+  // braking in its path. Keep the existing right-pass state until merging is safe.
+  const threatenedLane = next === "right" ? RIGHT_PASS : next ? -LANE : LANE;
+  const oncoming = cars.some((c) => !c.same && z - c.z > -8 &&
+    z - c.z < Math.max(90, (Math.max(0, speed) + c.speed) * 3) &&
+    (Math.abs(c.lane - currentLane) < 2.2 || Math.abs(c.lane - threatenedLane) < 2.2));
+  const escapePathClear = (target: number) => !cars.some((c) => {
+    const gap = z - c.z;
+    const inPath = c.lane > Math.min(currentLane, target) - 1.9 && c.lane < Math.max(currentLane, target) + 1.9;
+    return inPath && gap > -Math.max(10, (c.speed - speed) * 1.0) &&
+      gap < (c.same ? 12 : Math.max(25, (Math.max(0, speed) + c.speed) * 0.9));
+  });
+  if (oncoming) {
+    if (currentLane < 0 && mergeSafe && escapePathClear(LANE)) next = false;
+    else if (!rightBlocked && escapePathClear(RIGHT_PASS)) next = "right";
   }
   // Reckless but never parked: it always keeps creeping so it cannot get stuck.
   const CREEP = 3;
