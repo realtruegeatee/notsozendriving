@@ -16,7 +16,7 @@ import type { TrafficReaction } from "./traffic-reaction";
 import { npcCrash, npcOffset, resolveNpcCollision } from "./npc-collision";
 import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import type { DrivingNpc } from "./npc-driving";
-import { createCrashMotion, stepCrashMotion } from "./crash-physics";
+import { createCrashMotion, createSwerveMotion, stepCrashMotion } from "./crash-physics";
 import type { CrashMotion } from "./crash-physics";
 
 const MODELS = ["sedan", "suv", "hatchback-sports", "taxi", "van", "truck", "sedan-sports"].map((m) => `/models/${m}.glb`);
@@ -267,7 +267,9 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           if (ahead > 0 && ahead < 10 && Math.abs(pLat - npcOffset(n)) < 2.2) target = Math.min(target, game.speed);
         }
         if (n.crashAge >= 0) {
-          n.crashMotion ??= createCrashMotion(n.crashOrigin ?? npcOffset(n), n.crashSpeed ?? n.v, n.crashSide ?? Math.sign(n.lane), n.shove);
+          n.crashMotion ??= n.shove > 0
+            ? createCrashMotion(n.crashOrigin ?? npcOffset(n), n.crashSpeed ?? n.v, n.crashSide ?? Math.sign(n.lane), n.shove)
+            : createSwerveMotion(n.crashOrigin ?? npcOffset(n), n.v, n.crashSide ?? Math.sign(n.lane), n.laneVelocity);
           n.s += (same ? 1 : -1) * stepCrashMotion(n.crashMotion, dt);
           n.v = n.crashMotion.speed;
         } else {
@@ -320,7 +322,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         g.position.set(roadX(z) + offset, (crash ? groundY(z, offset) + 0.03 : roadY(z)) + (crash?.bounce ?? 0), z);
         const direction = same ? 1 : -1;
         const drivingYaw = Math.atan(roadXd(z) - n.laneVelocity / (direction * Math.max(4, n.v))) + (same ? 0 : Math.PI);
-        g.rotation.set(Math.atan(-roadYd(z)) * direction, crash ? Math.atan(roadXd(z)) + (same ? 0 : Math.PI) + crash.yaw : drivingYaw, crash?.roll ?? n.laneRoll, "YXZ");
+        g.rotation.set(Math.atan(-roadYd(z)) * direction, crash ? Math.atan(roadXd(z)) + (same ? 0 : Math.PI) + crash.yaw * direction : drivingYaw, (crash?.roll ?? n.laneRoll) * (crash ? direction : 1), "YXZ");
         g.userData["reaction"] = n.reaction;
         g.userData["speed"] = n.v;
         g.userData["baseSpeed"] = n.base;
