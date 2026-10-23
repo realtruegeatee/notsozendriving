@@ -1,3 +1,4 @@
+import { AGGRESSION, type Aggression } from "./aggression";
 import { useEffect, useRef, useState } from "react";
 import { Eye, Moon, Pause, Play, Sun, Gauge, Megaphone, Lamp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -109,6 +110,25 @@ function SteerPad() {
   );
 }
 
+function AggroPicker() {
+  const [aggro, setAggro] = useState<Aggression>("reckless");
+  useEffect(() => {
+    const saved = localStorage.getItem("zen-aggro") as Aggression | null;
+    if (saved && AGGRESSION.some((a) => a.id === saved)) { setAggro(saved); game.aggro = saved; }
+  }, []);
+  const pick = (a: Aggression) => { setAggro(a); game.aggro = a; localStorage.setItem("zen-aggro", a); };
+  return (
+    <>
+      <p className="zen-label">Autopilot</p>
+      <div className="zen-seg">
+        {AGGRESSION.map((a) => (
+          <button key={a.id} data-on={aggro === a.id} onClick={() => pick(a.id)}>{a.label}</button>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function LayoutPicker({ layout, setLayout }: { layout: Layout; setLayout: (l: Layout) => void }) {
   return (
     <>
@@ -215,6 +235,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
           <TimePicker night={night} setNight={setNight} />
           <CarPicker car={car} setCar={pickCar} />
           <LayoutPicker layout={layout} setLayout={setLayout} />
+          <AggroPicker />
           <button className="zen-start" onClick={start}>Start driving</button>
           <p className="zen-hint">Keyboard: WASD or arrows, N day/night, V camera view, X horn, T flash.</p>
         </div>
@@ -262,6 +283,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
             <TimePicker night={night} setNight={setNight} />
             <CarPicker car={car} setCar={pickCar} />
             <LayoutPicker layout={layout} setLayout={setLayout} />
+          <AggroPicker />
             <button className="zen-start" onClick={() => setPaused(false)}>Continue</button>
           </div>
         </div>
