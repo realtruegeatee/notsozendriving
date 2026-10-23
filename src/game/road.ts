@@ -36,7 +36,7 @@ export type Biome = (typeof BIOMES)[number];
 export type BiomeWeights = Record<Biome, number>;
 export const BIOME_LEN = 900;
 export function biomeOf(segment: number): Biome {
-  return segment <= 0 ? "meadow" : BIOMES[Math.floor(hash(segment * 7.31 + 2) * BIOMES.length)] ?? "meadow";
+  return segment <= 0 ? "alpine" : BIOMES[Math.floor(hash(segment * 7.31 + 2) * BIOMES.length)] ?? "meadow";
 }
 export const lakeSide = (segment: number) => (hash(segment * 3.17 + 5) > 0.5 ? 1 : -1);
 function segments(z: number) {
