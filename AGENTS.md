@@ -10,5 +10,6 @@
 <!-- LOVABLE:END -->
 - Game logic lives in src/game: per-frame state is a mutable store (store.ts), road shape is pure math in road.ts; React state only for UI toggles. Why: avoids re-renders every frame.
 - Offline: vite-plugin-pwa generateSW writes sw.js into dist/client; register only via src/lib/register-sw.ts (refuses dev/preview/iframe, ?sw=off). Why: avoids stale caches in preview.
-- Multiplayer is client-authoritative over Cloud realtime broadcast+presence, one channel per room in src/game/Multiplayer.tsx, ~6 Hz send-on-change. Why: no game server; keeps message volume under project limits.
+- Multiplayer is client-authoritative over Cloud realtime broadcast+presence, one channel per room in src/game/Multiplayer.tsx, 6 Hz send-on-change (4 Hz for larger rosters); received poses use a timestamped interpolation buffer and stale peers are excluded from collisions. Why: smooth rendering without inflating network volume or blocking local driving on latency.
+- Multiplayer contact and safe teleport placement use pure footprint math in src/game/multiplayer-math.ts; the local driving loop resolves only its own car. Why: keeps casual bumps immediate and rules independently testable without a game server.
 - Radio lives in src/game/radio.ts: built-in stations are generated with Web Audio, live stations are external streams. Why: built-in stations must work offline.
