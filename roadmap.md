@@ -22,5 +22,5 @@
 - [x] Add NPC overtaking with lane clearance and return-to-lane checks
 - [x] Fix NPC passing safety and smooth pull-out/return animation
 - [x] Verify complete NPC passes in both directions and game rendering
-- [ ] Autopilot finds more gaps; biomes with lakes, mountains, forest, desert
-- [ ] Head-on NPC crashes: both cars swerve off in different directions
+- [x] Autopilot finds more gaps; biomes with lakes, mountains, forest, desert
+- [x] Head-on NPC crashes: both cars swerve off in different directions
