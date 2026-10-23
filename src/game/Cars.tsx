@@ -253,6 +253,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           const lean = clamp(-(n.laneVelocity - previousVelocity) / Math.max(dt, 0.001) * Math.sign(n.lane) * 0.012, -0.06, 0.06);
           n.laneRoll += (lean - n.laneRoll) * damp(6, dt);
           target = plan.speed;
+          if (plan.swerve) { n.reaction = "crash"; n.reactionLeft = 7; n.crashOrigin = npcOffset(n); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false; }
         }
         if (same && !crashing) {
           const ahead = ps - n.s;

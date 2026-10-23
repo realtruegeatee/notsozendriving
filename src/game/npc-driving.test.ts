@@ -81,9 +81,11 @@ it("lane changes are delta-timed and parked NPCs do not slide sideways", () => {
   expect(simulate(1 / 30)).toBeCloseTo(simulate(1 / 120), 2);
   expect(stepNpcLane(-1, -2, -4.2, 0, 0.05)).toEqual({ offset: -1, velocity: 0 });
 });
-it("A home-lane NPC only eases off for an oncoming passer instead of stopping", () => {
-  const home = npc(0, 20), passer = { ...npc(40, 20, -LANE), passOffset: 2 * LANE, passing: true };
-  expect(planNpcDriving(home, [home, passer], 20).speed).toBeCloseTo(12);
+it("A home-lane NPC swerves off the road for an oncoming passer instead of stopping", () => {
+  const home = npc(0, 20), passer = { ...npc(30, 20, -LANE), passOffset: 2 * LANE, passing: true };
+  const plan = planNpcDriving(home, [home, passer], 20);
+  expect(plan.swerve).toBe(true);
+  expect(plan.speed).toBe(20);
 });
 
 it("NPCs do not pull out when there is no gap ahead of the slow car to merge into", () => {
