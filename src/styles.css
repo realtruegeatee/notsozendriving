@@ -146,50 +146,54 @@
 :root {
   --font-display: "Cormorant Garamond", serif;
   --font-body: "Karla", sans-serif;
-  --glass: oklch(0.97 0.015 80 / 0.55);
-  --glass-border: oklch(1 0 0 / 0.5);
-  --glass-ink: oklch(0.25 0.03 220);
-  --gas: oklch(0.72 0.09 160 / 0.6);
-  --brake: oklch(0.7 0.09 30 / 0.6);
+  --paper: oklch(0.95 0.025 85);
+  --ink: oklch(0.24 0.02 60);
+  --ink-soft: oklch(0.24 0.02 60 / 0.55);
+  --gas: oklch(0.62 0.08 150);
+  --brake: oklch(0.6 0.12 35);
 }
 body { font-family: var(--font-body); overscroll-behavior: none; }
-.zen-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 1.5rem;
-  background: radial-gradient(ellipse at center, oklch(0.2 0.03 230 / 0.15), oklch(0.2 0.03 230 / 0.45)); }
-.zen-card { width: min(100%, 380px); text-align: center; padding: 2rem 1.5rem; border-radius: 1.75rem;
-  background: var(--glass); border: 1px solid var(--glass-border); color: var(--glass-ink); backdrop-filter: blur(14px);
-  animation: zen-in 0.8s ease both; }
-.zen-kicker { font-size: 0.7rem; letter-spacing: 0.35em; text-transform: uppercase; opacity: 0.7; }
-.zen-title { font-family: var(--font-display); font-style: italic; font-size: 3.4rem; line-height: 1; margin: 0.4rem 0; }
-.zen-sub { opacity: 0.8; margin-bottom: 1.4rem; }
-.zen-toggle { display: inline-flex; padding: 4px; border-radius: 999px; background: oklch(0.25 0.03 220 / 0.1); margin-bottom: 1.2rem; }
-.zen-toggle button { display: flex; align-items: center; gap: 6px; padding: 0.5rem 1.1rem; border-radius: 999px; font-weight: 600; transition: all .3s; }
-.zen-toggle button[data-on="true"] { background: var(--primary); color: var(--primary-foreground); }
-.zen-start { display: block; width: 100%; padding: 0.95rem; border-radius: 999px; background: var(--primary); color: var(--primary-foreground);
-  font-weight: 600; letter-spacing: 0.05em; transition: transform .2s; }
-.zen-start:active { transform: scale(0.97); }
-.zen-hint { font-size: 0.75rem; opacity: 0.6; margin-top: 1rem; }
+.zen-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: end center; padding: 1rem; background: oklch(0.2 0.02 60 / 0.25); }
+.zen-card { width: min(100%, 420px); padding: 1.4rem 1.3rem 1.2rem; background: var(--paper); color: var(--ink);
+  border: 2px solid var(--ink); border-radius: 4px; box-shadow: 5px 5px 0 var(--ink); animation: zen-in 0.5s ease both; }
+.zen-title { font-family: var(--font-display); font-style: italic; font-size: 3rem; line-height: 0.9; }
+.zen-sub { font-size: 0.9rem; color: var(--ink-soft); margin: 0.4rem 0 1.1rem; }
+.zen-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; margin: 0.9rem 0 0.4rem; }
+.zen-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 2px solid var(--ink); border-radius: 3px; overflow: hidden; }
+.zen-seg button { padding: 0.55rem 0.3rem; font-size: 0.8rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.zen-seg button + button { border-left: 2px solid var(--ink); }
+.zen-seg button[data-on="true"] { background: var(--ink); color: var(--paper); }
+.zen-mini { display: flex; gap: 3px; align-items: center; height: 14px; }
+.zen-mini i { display: block; border: 1.5px solid currentColor; }
+.zen-start { margin-top: 1.2rem; width: 100%; padding: 0.85rem; background: var(--ink); color: var(--paper); border-radius: 3px;
+  font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.85rem; }
+.zen-start:active { transform: translate(2px, 2px); }
+.zen-hint { font-size: 0.72rem; color: var(--ink-soft); margin-top: 0.7rem; }
 .zen-hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; user-select: none; -webkit-user-select: none; }
-.zen-hud button, .zen-steer, .zen-overlay { pointer-events: auto; }
-.zen-top { display: flex; justify-content: space-between; align-items: flex-start; padding: max(env(safe-area-inset-top), 14px) 14px 0; }
-.zen-glass { background: var(--glass); border: 1px solid var(--glass-border); color: var(--glass-ink); backdrop-filter: blur(10px); }
-.zen-readout { display: flex; align-items: baseline; gap: 5px; padding: 0.45rem 0.9rem; border-radius: 999px; }
-.zen-num { font-family: var(--font-display); font-size: 1.7rem; font-weight: 500; font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
-.zen-num-sm { font-size: 1.2rem; }
-.zen-unit { font-size: 0.7rem; opacity: 0.7; }
-.zen-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: 0.4; margin: 0 6px; align-self: center; }
-.zen-actions { display: flex; gap: 8px; }
-.zen-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; }
-.zen-icon[data-on="true"] { background: var(--primary); color: var(--primary-foreground); }
-.zen-controls { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px;
-  padding: 0 14px max(env(safe-area-inset-bottom), 18px); }
-.zen-pedal { width: 74px; height: 96px; border-radius: 22px; font-weight: 600; font-size: 0.8rem; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--glass-ink); border: 1px solid var(--glass-border); backdrop-filter: blur(10px); touch-action: none; transition: transform .1s; }
-.zen-pedal:active { transform: scale(0.94); }
-.zen-gas { background: var(--gas); }
-.zen-brake { background: var(--brake); }
-.zen-steer { position: relative; flex: 1; height: 64px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-border);
-  backdrop-filter: blur(10px); touch-action: none; display: grid; place-items: center; }
-.zen-steer-line { position: absolute; left: 28px; right: 28px; height: 2px; background: var(--glass-ink); opacity: 0.2; }
-.zen-steer-knob { width: 48px; height: 48px; border-radius: 50%; background: var(--primary); box-shadow: 0 6px 20px oklch(0.2 0.03 230 / 0.35); transition: transform 0.25s cubic-bezier(.2,.8,.2,1); }
+.zen-hud button, .zen-touch, .zen-overlay { pointer-events: auto; }
+.zen-top { display: flex; justify-content: space-between; align-items: flex-start; padding: max(env(safe-area-inset-top), 12px) 12px 0; }
+.zen-panel { background: var(--paper); color: var(--ink); border: 2px solid var(--ink); border-radius: 3px; }
+.zen-readout { display: flex; align-items: baseline; gap: 4px; padding: 0.2rem 0.6rem; font-variant-numeric: tabular-nums; }
+.zen-num { font-size: 1.5rem; font-weight: 600; min-width: 2.2ch; text-align: right; }
+.zen-unit { font-size: 0.65rem; color: var(--ink-soft); text-transform: uppercase; margin-right: 6px; }
+.zen-actions { display: flex; }
+.zen-icon { width: 40px; height: 40px; display: grid; place-items: center; }
+.zen-icon + .zen-icon { border-left-width: 0; }
+.zen-icon[data-on="true"] { background: var(--ink); color: var(--paper); }
+.zen-controls { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
+  padding: 0 16px max(env(safe-area-inset-bottom), 18px); }
+.zen-controls[data-flip="true"] { flex-direction: row-reverse; }
+.zen-pedals { display: flex; align-items: flex-end; gap: 10px; }
+.zen-pedal { width: 64px; height: 110px; border: 2px solid var(--ink); border-radius: 6px 6px 3px 3px; color: var(--paper);
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; touch-action: none;
+  background-image: repeating-linear-gradient(0deg, transparent 0 9px, oklch(0 0 0 / 0.12) 9px 11px); box-shadow: 3px 3px 0 var(--ink); }
+.zen-pedal:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.zen-gas { background-color: var(--gas); height: 130px; width: 56px; }
+.zen-brake { background-color: var(--brake); width: 76px; height: 92px; }
+.zen-wheel { width: 150px; height: 150px; touch-action: none; position: relative; }
+.zen-wheel svg { width: 100%; height: 100%; filter: drop-shadow(3px 3px 0 var(--ink)); }
+.zen-steer { flex: 1; height: 60px; background: var(--paper); border: 2px solid var(--ink); border-radius: 3px; position: relative; touch-action: none; display: grid; place-items: center; }
+.zen-steer-line { position: absolute; left: 26px; right: 26px; height: 2px; background: var(--ink-soft); }
+.zen-steer-knob { width: 22px; height: 44px; background: var(--ink); border-radius: 2px; transition: transform 0.25s cubic-bezier(.2,.8,.2,1); }
 .zen-steer:active .zen-steer-knob { transition: none; }
-@keyframes zen-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes zen-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
