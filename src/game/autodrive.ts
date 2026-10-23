@@ -33,6 +33,8 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
     const futureGap = gap - closing(c) * 1.2;
     return (gap > -behindGap && gap < aheadGap) || (futureGap > -behindGap && futureGap < aheadGap);
   });
+  // A stationary car is an obstacle to drive around, not traffic to wait behind.
+  const stationaryBlocker = !!blocker && blocker.speed < 1;
   // Patience only runs out while following nearby slow traffic, not on approach.
   const waiting = !passing && blocker && z - blocker.z >= 0 && z - blocker.z <= 40 && leftBlocked;
   const waited = waiting ? Math.min(RIGHT_PASS_WAIT, blockedFor + Math.max(0, dt)) : 0;
@@ -42,7 +44,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
     next = mergeSafe ? false : "right";
   } else if (passing ? Boolean(blocker) || !mergeSafe : Boolean(blocker)) {
     if (!leftBlocked) next = true;
-    else if (!rightBlocked && (passing || waited >= RIGHT_PASS_WAIT)) next = "right";
+    else if (!rightBlocked && (passing || waited >= RIGHT_PASS_WAIT || stationaryBlocker)) next = "right";
     else if (passing && !mergeSafe) next = true;
   }
   // Direction comes from the NPC's home lane, not its overtaking offset.
@@ -80,6 +82,9 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
     const inTarget = overlaps(c, lane) || overlaps(c, lane, Math.min(1.2, encounter(c)));
     const futureLane = predictedLane(c, 0.8);
     const inPath = Math.max(c.lane, futureLane) > Math.min(currentLane, lane) - 1.9 && Math.min(c.lane, futureLane) < Math.max(currentLane, lane) + 1.9;
+    // The stationary obstacle we are actively driving around must not park us
+    // next to it; only its lane matters once we are committed to another one.
+    if (c.speed < 1 && next && !inTarget) continue;
     // Accelerate decisively once clear, not while the rear bumper is still
     // following the blocker during a real (non-instantaneous) lane change.
     if (c.same && gap >= 0 && gap < Math.max(22, speed * 0.6) && overlaps(c, currentLane) && Math.abs(lane - currentLane) > 0.5) targetSpeed = Math.min(targetSpeed, follow(c.speed, gap, 5));
