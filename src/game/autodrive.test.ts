@@ -177,6 +177,7 @@ it("does not evade into an occupied right escape or through a car alongside", ()
     const result = planAutodrive(0, 25, false, [
       { z: -40, lane: LANE, speed: 30, same: false },
       { z: 0, lane: obstruction, speed: 20, same: true },
+      { z: -60, lane: -LANE, speed: 30, same: false },
     ]);
     expect(result.lane).toBe(LANE);
     expect(result.targetSpeed).toBeLessThan(25);
