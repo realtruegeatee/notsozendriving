@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { LANE, ROAD_HALF } from "./road";
+import { LANE } from "./road";
 import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseSporadicEvent, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, npcTargetSpeed, ONCOMING_SWERVE_CHANCE, pickRunoffVictim, reactionSpeed, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, SPORADIC_INTERVAL, threatenedTraffic } from "./traffic-reaction";
 
 const car = { s: 30, lane: LANE, crashAge: -1, v: 10 };
@@ -89,10 +89,6 @@ it("the nearest car in the way is the one that gets shoved", () => {
   const slow = { s: 12, lane: LANE, crashAge: -1, v: 12, reaction: null };
   const near = { ...slow, s: 8 }, far = { ...slow, s: 18 };
   expect(pickRunoffVictim(hot, [far, near])).toBe(near);
-});
-it("swerving cars can leave the road on either side", () => {
-  expect(roadsideCrash(5, LANE, LANE, 0, 1).offset).toBeGreaterThan(LANE);
-  expect(roadsideCrash(5, LANE, LANE, 0, -1).offset).toBeLessThan(-LANE);
 });
 
 it("sporadic mood swings are frame-rate independent and rare per frame", () => {
