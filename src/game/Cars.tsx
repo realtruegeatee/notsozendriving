@@ -85,9 +85,9 @@ export function Traffic() {
 
     if (active) {
       const k = input.keys;
-      let thr = Math.max(input.throttle, k.w || k.arrowup ? 1 : 0);
-      const brk = Math.max(input.brake, k.s || k.arrowdown ? 1 : 0);
-      const steerIn = clamp(input.steer + (k.d || k.arrowright ? 1 : 0) - (k.a || k.arrowleft ? 1 : 0), -1, 1);
+      let thr = Math.max(input.throttle, k["w"] || k["arrowup"] ? 1 : 0);
+      const brk = Math.max(input.brake, k["s"] || k["arrowdown"] ? 1 : 0);
+      const steerIn = clamp(input.steer + (k["d"] || k["arrowright"] ? 1 : 0) - (k["a"] || k["arrowleft"] ? 1 : 0), -1, 1);
       if (game.cruise && !thr && !brk) thr = clamp((FEEL.CRUISE - game.speed) * 0.2, 0, 1);
       S.steer += (steerIn - S.steer) * damp(7, dt);
 
