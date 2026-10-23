@@ -1,6 +1,12 @@
-// Desktop wrapper for Zen Drive. Loads the static game build from app/.
-const { app, BrowserWindow } = require("electron");
+// Desktop wrapper for Zen Drive. Serves the static game build from app/
+// over an app:// protocol so routing and module loading work like on the web.
+const { app, BrowserWindow, protocol, net } = require("electron");
 const path = require("path");
+const { pathToFileURL } = require("url");
+
+protocol.registerSchemesAsPrivileged([
+  { scheme: "app", privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
+]);
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -8,17 +14,18 @@ function createWindow() {
     height: 800,
     autoHideMenuBar: true,
     backgroundColor: "#0e0f13",
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      // The static build uses ES modules; file:// blocks them without this.
-      webSecurity: false,
-    },
+    webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
-  win.loadFile(path.join(__dirname, "app", "index.html"));
+  win.loadURL("app://localhost/");
 }
 
 app.whenReady().then(() => {
+  protocol.handle("app", (req) => {
+    let p = decodeURIComponent(new URL(req.url).pathname);
+    if (p === "/" || p === "") p = "/index.html";
+    const file = path.join(__dirname, "app", p);
+    return net.fetch(pathToFileURL(file).toString());
+  });
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
