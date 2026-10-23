@@ -382,10 +382,10 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     const sh = game.shake * (Math.random() - 0.5);
     if (fp) {
       // Driver's-eye view: seated left of centre, steady head, gentle look into corners.
-      const eye = game.y + 1.15 + Math.sin(game.distance * 0.9) * 0.004 * Math.min(1, game.speed / 10);
+      const eye = game.y + 1.85 + Math.sin(game.distance * 0.9) * 0.004 * Math.min(1, game.speed / 10);
       S.camY = eye;
       // Dashcam: centred behind the windscreen so the bonnet stays in view.
-      const side = 0, fwd = -1.1;
+      const side = 0, fwd = -0.2;
       const cx = game.x + Math.cos(game.yaw) * side - Math.sin(game.yaw) * -fwd;
       const cz = game.z - Math.sin(game.yaw) * side - Math.cos(game.yaw) * -fwd;
       camera.position.set(cx + sh * 0.15, eye + sh * 0.15, cz);
