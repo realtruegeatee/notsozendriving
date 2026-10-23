@@ -1,24 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { Game } from "../game/Game";
+import { HUD } from "../game/HUD";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
+  ssr: false,
+  head: () => ({
+    meta: [
+      { title: "Zen Drive — an endless calm road" },
+      { name: "description", content: "A relaxing endless driving game. Cruise winding roads with gentle traffic, by day or by night." },
+      { property: "og:title", content: "Zen Drive — an endless calm road" },
+      { property: "og:description", content: "A relaxing endless driving game. Cruise winding roads with gentle traffic, by day or by night." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
+  const [night, setNight] = useState(false);
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="fixed inset-0 overflow-hidden bg-background">
+      <Game night={night} />
+      <HUD night={night} setNight={setNight} />
     </div>
   );
 }
