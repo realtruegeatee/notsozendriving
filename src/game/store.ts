@@ -16,6 +16,7 @@ export const game = {
   warp: 0,
   flashUntil: 0,
   view: "chase" as "chase" | "cockpit",
+  aggro: "reckless" as import("./aggression").Aggression,
 };
 
 // Multiplayer connection info shown in the HUD.

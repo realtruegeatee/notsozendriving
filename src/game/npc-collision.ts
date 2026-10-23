@@ -5,7 +5,9 @@ import type { CrashMotion } from "./crash-physics";
 import { createCrashMotion, createSwerveMotion } from "./crash-physics";
 import type { Pose } from "./multiplayer-math";
 
-export type CollisionNpc = { s: number; lane: number; v: number; crashAge: number; impactOffset: number; contactLeft: number; passOffset?: number; crashOrigin?: number; shove?: number; crashSide?: number; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; passing?: boolean };
+export type CollisionNpc = { s: number; lane: number; v: number; crashAge: number; impactOffset: number; contactLeft: number; passOffset?: number; crashOrigin?: number; shove?: number; crashSide?: number; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; passing?: boolean; stunLeft?: number };
+/** Seconds a car rammed from behind by the autopilot stays stopped before driving again. */
+export const STUN_FOR = 3;
 export function npcCrash(car: CollisionNpc) { return car.crashMotion ?? roadsideCrash(car.crashAge, car.lane, car.crashOrigin, car.shove, car.crashSide); }
 export function npcOffset(car: CollisionNpc) {
   return (car.crashAge < 0 ? car.lane + (car.passOffset ?? 0) : npcCrash(car).offset) + car.impactOffset;
@@ -33,6 +35,13 @@ export function resolveAutopilotNpcContact(player: Pose, autopilot: boolean, car
     car.crashAge = 0;
     car.contactLeft = 0.5;
     car.crashMotion = createSwerveMotion(offset, car.v, car.crashSide, lateral);
+  } else if (autopilot && aligned && behindPlayer < -2.1 && aheadOfNpc < -2.1 && car.crashAge < 0) {
+    // Autopilot front hits this car's rear: it stalls and gets shoved aside, then drives on.
+    if (!(car.stunLeft && car.stunLeft > 0)) car.stunLeft = STUN_FOR;
+    car.v = 0;
+    const lat = (npcPose.x - player.x) * Math.cos(player.yaw) - (npcPose.z - player.z) * Math.sin(player.yaw);
+    const side = Math.abs(lat) > 0.05 ? Math.sign(lat) : Math.sign(npcOffset(car)) || 1;
+    car.impactOffset = Math.max(-6, Math.min(6, car.impactOffset + side * 0.25));
   }
   return push;
 }

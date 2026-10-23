@@ -36,7 +36,8 @@ class Radio {
     if (st.kind === "live") {
       if (!navigator.onLine) return this.setStatus("error");
       const a = new Audio(st.url);
-      a.crossOrigin = "anonymous";
+      // No crossOrigin: the stream host sends no CORS headers, which made playback fail.
+      a.preload = "none";
       a.volume = this.volume;
       a.onplaying = () => this.setStatus("playing");
       a.onerror = () => this.setStatus("error");
