@@ -4,16 +4,16 @@ import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseTrafficReaction, CRASH_CHANCE, m
 
 const car = { s: 30, lane: LANE, crashAge: -1, v: 10 };
 it("NPC reactions include a chance to crash, accelerate, or brake", () => {
-  expect(chooseTrafficReaction(0.03)).toBe("crash");
+  expect(chooseTrafficReaction(0.01)).toBe("crash");
   expect(chooseTrafficReaction(0.5)).toBe("accelerate");
   expect(chooseTrafficReaction(0.9)).toBe("brake");
 });
 it("swerving off the road is rare and speeding up is the common reaction", () => {
   expect(chooseTrafficReaction(0.06)).toBe("accelerate");
   expect(chooseTrafficReaction(0.6)).toBe("accelerate");
-  expect(chooseTrafficReaction(0.66)).toBe("accelerate");
-  expect(chooseTrafficReaction(0.68)).toBe("brake");
-  expect(CRASH_CHANCE).toBe(0.05);
+  expect(chooseTrafficReaction(0.63)).toBe("accelerate");
+  expect(chooseTrafficReaction(0.65)).toBe("brake");
+  expect(CRASH_CHANCE).toBe(0.02);
   expect(ACCELERATE_CHANCE).toBeGreaterThan(0.5);
   expect(CRASH_CHANCE + ACCELERATE_CHANCE + BRAKE_CHANCE).toBeCloseTo(1, 10);
 });

@@ -221,8 +221,15 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
     );
   }
 
+  const signals = (
+    <div className="zen-signals">
+      <Button variant="ghost" size="icon" className="zen-panel zen-icon" aria-label="Flash headlights" title="Flash headlights" onClick={flashLights}><Lamp size={18} /></Button>
+      <Button variant="ghost" size="icon" className="zen-panel zen-icon" aria-label="Horn" title="Horn" onClick={horn}><Megaphone size={18} /></Button>
+    </div>
+  );
   const pedals = (
     <div className="zen-pedals">
+      {signals}
       <Pedal label="Brake" className="zen-brake" onChange={(v) => (input.brake = v)} />
       <Pedal label="Gas" className="zen-gas" onChange={(v) => (input.throttle = v)} />
     </div>
@@ -246,10 +253,6 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
           <button className="zen-panel zen-icon" aria-label="Pause" onClick={() => setPaused(!paused)}>{paused ? <Play size={18} /> : <Pause size={18} />}</button>
         </div>
       </div>
-      <div className="zen-signals">
-        <Button variant="ghost" size="icon" className="zen-panel zen-icon" aria-label="Flash headlights" title="Flash headlights" onClick={flashLights}><Lamp size={18} /></Button>
-        <Button variant="ghost" size="icon" className="zen-panel zen-icon" aria-label="Horn" title="Horn" onClick={horn}><Megaphone size={18} /></Button>
-      </div>
       {paused && (
         <div className="zen-overlay">
           <div className="zen-card">
@@ -265,6 +268,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
         <div className="zen-controls">
           <Pedal label="Brake" className="zen-brake" onChange={(v) => (input.brake = v)} />
           <SteerPad />
+          {signals}
           <Pedal label="Gas" className="zen-gas" onChange={(v) => (input.throttle = v)} />
         </div>
       ) : (
