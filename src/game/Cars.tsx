@@ -119,7 +119,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       let steerIn = clamp(input.steer + (k["d"] || k["arrowright"] ? 1 : 0) - (k["a"] || k["arrowleft"] ? 1 : 0), -1, 1);
       const auto = game.cruise && !thr && !brk && Math.abs(steerIn) < 0.05;
       S.signalCooldown = Math.max(0, S.signalCooldown - dt);
-      if (shouldAutopilotSignal(auto, game.speed, S.signalCooldown, ps, npcs)) {
+      if (shouldAutopilotSignal(auto, game.speed, S.signalCooldown, ps, game.x - roadX(game.z), npcs)) {
         horn(); flashLights(); S.signalCooldown = 2.2;
         for (const n of npcs) if (threatenedTraffic(ps, n)) {
           n.reaction = chooseTrafficReaction(Math.random()); n.reactionLeft = 7;

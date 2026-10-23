@@ -1,8 +1,8 @@
 import { expect, it } from "vitest";
 import { LANE, ROAD_HALF } from "./road";
-import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseTrafficReaction, CRASH_CHANCE, reactionSpeed, roadsideCrash, shouldAutopilotSignal, threatenedTraffic } from "./traffic-reaction";
+import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, reactionSpeed, roadsideCrash, shouldAutopilotSignal, threatenedTraffic } from "./traffic-reaction";
 
-const car = { s: 30, lane: LANE, crashAge: -1 };
+const car = { s: 30, lane: LANE, crashAge: -1, v: 10 };
 it("NPC reactions include a chance to crash, accelerate, or brake", () => {
   expect(chooseTrafficReaction(0.1)).toBe("crash");
   expect(chooseTrafficReaction(0.5)).toBe("accelerate");
@@ -27,10 +27,19 @@ it("an NPC can finish its reaction before responding again", () => {
   expect(threatenedTraffic(0, { ...car, reactionLeft: 4 })).toBe(false);
   expect(threatenedTraffic(0, { ...car, reactionLeft: 0 })).toBe(true);
 });
-it("autopilot honks and flashes at nearby NPCs without spamming", () => {
-  expect(shouldAutopilotSignal(true, 20, 0, 0, [car])).toBe(true);
-  expect(shouldAutopilotSignal(true, 20, 1, 0, [car])).toBe(false);
-  expect(shouldAutopilotSignal(false, 20, 0, 0, [car])).toBe(false);
+it("autopilot honks and flashes only at a slower car ahead in our lane", () => {
+  expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [car])).toBe(true);
+  expect(shouldAutopilotSignal(true, 20, 1, 0, LANE, [car])).toBe(false);
+  expect(shouldAutopilotSignal(false, 20, 0, 0, LANE, [car])).toBe(false);
+});
+it("no signal unless the car ahead forces us to slow down", () => {
+  expect(shouldAutopilotSignal(true, 20, 0, 0, -LANE, [car])).toBe(false); // oncoming lane
+  expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [{ ...car, v: 26 }])).toBe(false); // pulling away
+  expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [{ ...car, s: 100 }])).toBe(false); // far ahead
+  expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [{ ...car, s: 1 }])).toBe(false); // alongside
+  expect(shouldAutopilotSignal(true, 20, 0, 0, LANE, [{ ...car, reactionLeft: 3 }])).toBe(false);
+  expect(mustSlowFor(0, LANE, 20, car)).toBe(true);
+  expect(mustSlowFor(0, LANE, 20, { ...car, crashAge: 2 })).toBe(false);
 });
 it("only nearby cars ahead react, and wrecks do not react again", () => {
   expect(threatenedTraffic(0, car)).toBe(true);

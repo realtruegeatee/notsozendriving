@@ -9,5 +9,6 @@
 - [x] Add aggressive autodrive with overtaking
 - [x] Add headlight flashing and horn
 - [x] Autopilot automatically honks and flashes at traffic
+- [x] Signal only when a slower car ahead in our lane forces us to slow down
 - [x] Give NPCs a chance to crash off-road, accelerate, or brake in response
 - [x] Enable and verify collisions between NPC cars
