@@ -7,7 +7,7 @@ import { groundY, LANE, ROAD_HALF, roadX, roadXd, roadY, roadYd } from "./road";
 import { CARS, FEEL, game, hudEls, input, net } from "./store";
 import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
-import { planAutodrive } from "./autodrive";
+import { planAutodrive, stepUnstick } from "./autodrive";
 import { maxSpeedForDistance, powerCurve } from "./speed";
 import type { Passing } from "./autodrive";
 import { flashLights, horn } from "./signals";
@@ -133,7 +133,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
   const wheels = useRef<THREE.Object3D[]>([]);
   const spot = useRef<THREE.SpotLight>(null);
   const spotTarget = useMemo(() => new THREE.Object3D(), []);
-  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0 });
+  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, stuckFor: 0, reverseLeft: 0 });
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
 
   useFrame((state, raw) => {
@@ -169,6 +169,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       const k = input.keys;
       let thr = Math.max(input.throttle, k["w"] || k["arrowup"] ? 1 : 0);
       let brk = Math.max(input.brake, k["s"] || k["arrowdown"] ? 1 : 0);
+      let reversing = false;
       let steerIn = clamp(input.steer + (k["d"] || k["arrowright"] ? 1 : 0) - (k["a"] || k["arrowleft"] ? 1 : 0), -1, 1);
       S.signalCooldown = Math.max(0, S.signalCooldown - dt);
       if (shouldAutopilotSignal(auto, game.speed, S.signalCooldown, ps, game.x - roadX(game.z), npcs)) {
@@ -189,7 +190,11 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         steerIn = clamp((game.yaw - desired) * 5, -1, 1);
         thr = clamp((plan.targetSpeed - game.speed) * 0.45, 0, 1);
         brk = clamp((game.speed - plan.targetSpeed) * 0.5, 0, 1);
-      } else { S.passing = false; S.blockedFor = 0; }
+        const u = stepUnstick(S.stuckFor, S.reverseLeft, game.speed, plan.targetSpeed, dt);
+        S.stuckFor = u.stuckFor; S.reverseLeft = u.reverseLeft; reversing = u.reversing;
+        if (reversing) { thr = 0; brk = 0; steerIn = 0; }
+        if (u.retryPass) { S.passing = true; S.blockedFor = 0; }
+      } else { S.passing = false; S.blockedFor = 0; S.stuckFor = 0; S.reverseLeft = 0; }
       S.steer += (steerIn - S.steer) * damp(7, dt);
 
       let v = game.speed;
@@ -199,7 +204,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       v *= Math.exp(-FEEL.DRAG * dt);
       const lat = game.x - roadX(game.z);
       if (Math.abs(lat) > ROAD_HALF + 0.6) v *= Math.exp(-0.9 * dt);
-      v = clamp(v, 0, maxV);
+      v = reversing ? v + (-4 - v) * damp(3, dt) : clamp(v, 0, maxV);
       game.speed = v;
 
       const roadYaw = Math.atan(roadXd(game.z));
@@ -215,7 +220,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       game.z += -Math.cos(game.yaw) * v * dt;
       const lat2 = game.x - roadX(game.z);
       if (Math.abs(lat2) > 12) game.x = roadX(game.z) + Math.sign(lat2) * 12;
-      game.distance += v * dt;
+      game.distance += Math.max(0, v) * dt;
       S.roll += (S.steer * v * 0.006 - S.roll) * damp(5, dt);
       wheels.current.forEach((w) => (w.rotation.x += (v * dt) / 0.35));
       // Each browser resolves its own car immediately; no network round trip on impact.
@@ -373,7 +378,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     if (spot.current) spot.current.intensity = now < game.flashUntil ? 280 : game.night ? 120 : 0;
 
     if (++S.frame % 6 === 0) {
-      if (hudEls.speed) hudEls.speed.textContent = String(Math.round(game.speed * 3.6));
+      if (hudEls.speed) hudEls.speed.textContent = String(Math.round(Math.abs(game.speed) * 3.6));
       if (hudEls.dist) hudEls.dist.textContent = (game.distance / 1000).toFixed(1);
     }
   });
