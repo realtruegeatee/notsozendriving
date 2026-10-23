@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { carContact } from "./multiplayer-math";
-import { npcOffset, resolveNpcCollision } from "./npc-collision";
+import { npcCrash, npcOffset, resolveNpcCollision } from "./npc-collision";
+import type { CollisionNpc } from "./npc-collision";
 import { LANE, groundY, roadX, roadXd } from "./road";
 
 const npc = (s: number, v: number, lane = LANE) => ({ s, v, lane, crashAge: -1, impactOffset: 0, contactLeft: 0 });
@@ -38,4 +39,19 @@ it("gentle NPC bumps do not run cars off the road", () => {
   expect(resolveNpcCollision(a, b)).toBe(true);
   expect(a.crashAge).toBe(-1);
   expect(b.crashAge).toBe(-1);
+});
+it("a shove gives immediate sideways momentum and body roll without teleporting", () => {
+  const faster: CollisionNpc = npc(30, 25), slower: CollisionNpc = npc(32, 10);
+  resolveNpcCollision(faster, slower);
+  const origin = npcOffset(slower);
+  expect(slower.shove).toBe(1);
+  slower.crashAge = 0.15;
+  expect(npcOffset(slower) - origin).toBeGreaterThan(2);
+  expect(Math.abs(npcCrash(slower).roll)).toBeGreaterThan(0.2);
+  expect(npcCrash(slower).bounce).toBeGreaterThan(0);
+});
+it("nearby cars cannot shove without physical contact", () => {
+  const faster = npc(30, 25), slower = npc(42, 10);
+  expect(resolveNpcCollision(faster, slower)).toBe(false);
+  expect(slower.crashAge).toBe(-1);
 });
