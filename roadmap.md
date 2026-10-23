@@ -25,3 +25,4 @@
 - [x] Autopilot finds more gaps; biomes with lakes, mountains, forest, desert
 - [x] Head-on NPC crashes: both cars swerve off in different directions
 - [x] Fix NPCs freezing mid-pass in the oncoming lane
+- [x] Autopilot brakes earlier and stops short of cars instead of bumping

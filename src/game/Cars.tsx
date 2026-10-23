@@ -182,7 +182,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const desired = Math.atan2(game.x - roadX(lookZ) - plan.lane, game.z - lookZ);
         steerIn = clamp((game.yaw - desired) * 5, -1, 1);
         thr = clamp((plan.targetSpeed - game.speed) * 0.45, 0, 1);
-        brk = clamp((game.speed - plan.targetSpeed) * 0.2, 0, 1);
+        brk = clamp((game.speed - plan.targetSpeed) * 0.5, 0, 1);
       } else { S.passing = false; S.blockedFor = 0; }
       S.steer += (steerIn - S.steer) * damp(7, dt);
 
