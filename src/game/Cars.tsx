@@ -11,10 +11,10 @@ import { planAutodrive } from "./autodrive";
 import { maxSpeedForDistance, powerCurve } from "./speed";
 import type { Passing } from "./autodrive";
 import { flashLights, horn } from "./signals";
-import { chooseTrafficReaction, npcTargetSpeed, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
+import { chooseTrafficReaction, npcTargetSpeed, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
 import { npcCrash, npcOffset, resolveNpcCollision } from "./npc-collision";
-import { planNpcDriving, stepNpcLane } from "./npc-driving";
+import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import type { DrivingNpc } from "./npc-driving";
 import { createCrashMotion, stepCrashMotion } from "./crash-physics";
 import type { CrashMotion } from "./crash-physics";
@@ -113,7 +113,7 @@ function GltfCar({ url, wheels, driverId }: CarModelProps) {
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number };
+type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number };
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
   const npcs = useMemo<Npc[]>(() => {
@@ -121,8 +121,9 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     if (!traffic) return arr;
     for (let i = 0; i < 10; i++) {
       const same = i < 6;
-      const base = same ? 12 + Math.random() * 7 : 17 + Math.random() * 6;
-      arr.push({ s: 40 + i * 55 + Math.random() * 30, lane: same ? LANE : -LANE, v: base, base, crashAge: -1, reaction: null, reactionLeft: 0, impactOffset: 0, contactLeft: 0, passOffset: 0, passing: false, shove: 0, laneVelocity: 0, laneRoll: 0, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
+      const aggressive = i % 2 === 1;
+      const base = npcCruisingSpeed(same, aggressive, Math.random());
+      arr.push({ s: 40 + i * 55 + Math.random() * 30, lane: same ? LANE : -LANE, v: base, base, aggressive, crashAge: -1, reaction: null, reactionLeft: 0, impactOffset: 0, contactLeft: 0, passOffset: 0, passing: false, shove: 0, laneVelocity: 0, laneRoll: 0, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
     }
     return arr;
   }, [traffic]);
@@ -257,7 +258,8 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           const lean = clamp(-(n.laneVelocity - previousVelocity) / Math.max(dt, 0.001) * Math.sign(n.lane) * 0.012, -0.06, 0.06);
           n.laneRoll += (lean - n.laneRoll) * damp(6, dt);
           target = plan.speed;
-          if (plan.swerve && !n.dodged) n.dodged = Math.random() < 0.65; // most dodges are just a nervous moment
+          if (!plan.swerve) delete n.dodged;
+          if (plan.swerve && n.dodged === undefined) n.dodged = !shouldSwerveForPass(Math.random());
           if (plan.swerve && !n.dodged) { n.reaction = "crash"; n.reactionLeft = 7; n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false; }
         }
         if (same && !crashing) {
@@ -275,7 +277,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const ds = n.s - ps;
         if (ds < -50 || ds > 520) {
           n.s = ps + 180 + Math.random() * 320;
-          n.base = same ? 12 + Math.random() * 7 : 17 + Math.random() * 6;
+          n.base = npcCruisingSpeed(same, n.aggressive ?? false, Math.random());
           n.v = n.base;
           n.crashAge = -1;
           delete n.crashMotion; delete n.crashSpeed;
