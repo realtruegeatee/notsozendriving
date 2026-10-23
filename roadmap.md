@@ -18,5 +18,5 @@
 - [x] Delay right-side overtaking until autopilot loses patience behind slower traffic
 - [x] Return immediately after right passes when clear and improve autopilot collision avoidance
 - [x] Enable NPC cars to push other NPC cars off the road
-- [ ] Make NPC shoves visibly forceful and contact-driven
-- [ ] Add NPC overtaking with lane clearance and return-to-lane checks
+- [x] Make NPC shoves visibly forceful and contact-driven
+- [x] Add NPC overtaking with lane clearance and return-to-lane checks
