@@ -30,7 +30,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   }
   let targetSpeed = 30;
   if (!next && blocker) targetSpeed = Math.min(targetSpeed, Math.max(0, blocker.speed + (z - blocker.z - 12) * 0.65));
-  if (passing && !next && ahead.length > 0) targetSpeed = Math.min(targetSpeed, 16);
+  if (passing === true && !next && ahead.length > 0) targetSpeed = Math.min(targetSpeed, 16);
   const lane = next === "right" ? RIGHT_PASS : next ? -LANE : LANE;
   // Brake for hazards in the destination lane and close hazards along the lane-change path.
   for (const c of cars) {
