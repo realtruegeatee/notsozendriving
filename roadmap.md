@@ -38,3 +38,6 @@
 - [x] Raise the top speed to 200 km/h once 5.0 km is driven
 - [x] Bind keyboard: T flashes headlights, X honks
 - [x] Recognise oncoming overtakers and take a clear escape instead of stopping in their lane
+- [ ] Player car pushes other cars on contact instead of only losing speed
+- [ ] Max speed 300 km/h after 10 km
+- [ ] Better first-person (cockpit) view
