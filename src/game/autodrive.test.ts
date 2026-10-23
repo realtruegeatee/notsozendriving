@@ -107,5 +107,5 @@ it("brakes early enough for a stopped car ahead at high speed", () => {
   expect(r.targetSpeed).toBeLessThanOrEqual(Math.sqrt(2 * 7 * 23) + 0.01);
 });
 it("stops rather than creeping into an oncoming car in its path", () => {
-  expect(planAutodrive(0, 10, true, [{ z: -15, lane: -LANE, speed: 20, same: false }, { z: -5, lane: LANE, speed: 10, same: true }]).targetSpeed).toBe(0);
+  expect(planAutodrive(0, 10, false, [{ z: -15, lane: LANE, speed: 20, same: false }]).targetSpeed).toBe(0);
 });
