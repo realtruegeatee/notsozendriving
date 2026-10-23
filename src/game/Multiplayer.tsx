@@ -9,6 +9,7 @@ import { CARS, game, net } from "./store";
 import type { CarId } from "./store";
 import { interpolatePose, INTERPOLATION_MS, STALE_MS } from "./multiplayer-math";
 import type { Sample } from "./multiplayer-math";
+import { playHorn } from "./signals";
 
 type NetState = { id: string; car: CarId; x: number; y: number; z: number; yaw: number; warp?: number; seq?: number };
 const NET_TICK = 1 / 6; // keeps message volume low with up to ~6 drivers per room
@@ -44,6 +45,16 @@ export function Multiplayer({ room, name, car }: { room: string; name: string; c
         states.current.set(s.id, { car: s.car, samples, seq: s.seq ?? (prev?.seq ?? 0) + 1 });
         if (!prev || prev.car !== s.car) setPeers((p) => p.map((x) => (x.id === s.id ? { ...x, car: s.car } : x)));
       })
+      .on("broadcast", { event: "signal" }, ({ payload }) => {
+        if (!payload || !roster.current.has(payload.id)) return;
+        const peer = net.positions.get(payload.id);
+        if (!peer || performance.now() - peer.at > STALE_MS) return;
+        if (payload.kind === "flash") net.flashes.set(payload.id, performance.now() + 650);
+        if (payload.kind === "horn") {
+          const distance = Math.hypot(peer.x - game.x, peer.z - game.z);
+          if (distance < 90) playHorn(Math.max(0, 1 - distance / 90));
+        }
+      })
       .on("presence", { event: "sync" }, () => {
         const list = Object.entries(channel.presenceState<{ name: string; car: CarId }>()).map(([id, m]) => ({ id, name: m[0]?.name ?? "driver", car: m[0]?.car ?? "sedan" }));
         net.roster = list.map((p) => ({ id: p.id, name: p.name }));
@@ -60,7 +71,8 @@ export function Multiplayer({ room, name, car }: { room: string; name: string; c
         if (status === "SUBSCRIBED") { last.current.at = -1; void channel.track({ name, car: currentCar.current }); }
       });
     chan.current = channel;
-    return () => { chan.current = null; states.current.clear(); net.positions.clear(); net.ready.clear(); net.teleportTo = null; net.roster = []; net.status = "offline"; net.onRoster?.(); void supabase.removeChannel(channel); };
+    net.signal = (kind) => { if (net.status === "online") void channel.send({ type: "broadcast", event: "signal", payload: { id: net.id, kind } }); };
+    return () => { chan.current = null; net.signal = null; net.flashes.clear(); states.current.clear(); net.positions.clear(); net.ready.clear(); net.teleportTo = null; net.roster = []; net.status = "offline"; net.onRoster?.(); void supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, name]);
 
@@ -109,7 +121,7 @@ export function Multiplayer({ room, name, car }: { room: string; name: string; c
       {peers.map((p) => (
         <group key={p.id} visible={false} ref={(g) => { if (g) meshes.current.set(p.id, g); else meshes.current.delete(p.id); }}>
           <Suspense fallback={null}>
-            <CarModel key={p.car} url={`/models/${CARS.some((c) => c.id === p.car) ? p.car : "sedan"}.glb`} />
+            <CarModel key={p.car} driverId={p.id} url={`/models/${CARS.some((c) => c.id === p.car) ? p.car : "sedan"}.glb`} />
           </Suspense>
         </group>
       ))}

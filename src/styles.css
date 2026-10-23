@@ -226,3 +226,5 @@ body { font-family: var(--font-body); overscroll-behavior: none; }
 .zen-station[data-on="true"] span { color: var(--paper); opacity: 0.7; }
 .zen-vol { display: flex; flex-direction: column; gap: 4px; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; margin-top: 8px; }
 .zen-vol input { accent-color: var(--ink); }
+.zen-signals { position: absolute; right: 12px; top: 60px; display: flex; pointer-events: auto; }
+@media (max-width: 520px) { .zen-top { flex-wrap: wrap; gap: 8px; } .zen-signals { top: 108px; } }

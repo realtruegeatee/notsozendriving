@@ -1,11 +1,12 @@
 import { useGLTF } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { LANE, ROAD_HALF, roadX, roadXd, roadY, roadYd } from "./road";
 import { CARS, FEEL, game, hudEls, input, net } from "./store";
 import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
+import { planAutodrive } from "./autodrive";
 
 const MODELS = ["sedan", "suv", "hatchback-sports", "taxi", "van", "truck", "sedan-sports"].map((m) => `/models/${m}.glb`);
 MODELS.forEach((m) => useGLTF.preload(m));
@@ -15,8 +16,14 @@ export const tailMat = new THREE.MeshStandardMaterial({ color: "#a3262a", emissi
 
 const CAR_LEN = 4.2;
 
-export function CarModel({ url, wheels }: { url: string; wheels?: React.MutableRefObject<THREE.Object3D[]> }) {
+export function CarModel({ url, wheels, driverId }: { url: string; wheels?: React.MutableRefObject<THREE.Object3D[]>; driverId?: string }) {
   const { scene } = useGLTF(url);
+  const headlights = useMemo(() => headMat.clone(), []);
+  useEffect(() => () => headlights.dispose(), [headlights]);
+  useFrame(() => {
+    const flashing = performance.now() < (driverId === net.id ? game.flashUntil : driverId ? net.flashes.get(driverId) ?? 0 : 0);
+    headlights.emissiveIntensity = flashing ? 10 : game.night ? 5 : 0.3;
+  });
   const m = useMemo(() => {
     const obj = scene.clone(true);
     const list: THREE.Object3D[] = [];
@@ -39,7 +46,7 @@ export function CarModel({ url, wheels }: { url: string; wheels?: React.MutableR
       </group>
       {[-1, 1].map((sd) => (
         <group key={sd}>
-          <mesh position={[sd * m.w * 0.32, ly, -CAR_LEN / 2 - 0.01]} material={headMat}>
+          <mesh position={[sd * m.w * 0.32, ly, -CAR_LEN / 2 - 0.01]} material={headlights}>
             <boxGeometry args={[0.36, 0.16, 0.04]} />
           </mesh>
           <mesh position={[sd * m.w * 0.34, ly + 0.05, CAR_LEN / 2 + 0.01]} material={tailMat}>
@@ -73,7 +80,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
   const wheels = useRef<THREE.Object3D[]>([]);
   const spot = useRef<THREE.SpotLight>(null);
   const spotTarget = useMemo(() => new THREE.Object3D(), []);
-  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0 });
+  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false });
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
 
   useFrame((state, raw) => {
@@ -104,9 +111,20 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     if (active) {
       const k = input.keys;
       let thr = Math.max(input.throttle, k["w"] || k["arrowup"] ? 1 : 0);
-      const brk = Math.max(input.brake, k["s"] || k["arrowdown"] ? 1 : 0);
-      const steerIn = clamp(input.steer + (k["d"] || k["arrowright"] ? 1 : 0) - (k["a"] || k["arrowleft"] ? 1 : 0), -1, 1);
-      if (game.cruise && !thr && !brk) thr = clamp((FEEL.CRUISE - game.speed) * 0.2, 0, 1);
+      let brk = Math.max(input.brake, k["s"] || k["arrowdown"] ? 1 : 0);
+      let steerIn = clamp(input.steer + (k["d"] || k["arrowright"] ? 1 : 0) - (k["a"] || k["arrowleft"] ? 1 : 0), -1, 1);
+      const auto = game.cruise && !thr && !brk && Math.abs(steerIn) < 0.05;
+      if (auto) {
+        const cars = npcs.map((n) => ({ z: -n.s, lane: n.lane, speed: n.v, same: n.lane > 0 }));
+        for (const peer of net.positions.values()) if (now - peer.at < STALE_MS) cars.push({ z: peer.z, lane: peer.x - roadX(peer.z), speed: 20, same: Math.abs(peer.yaw - game.yaw) < Math.PI / 2 });
+        const plan = planAutodrive(game.z, game.speed, S.passing, cars);
+        S.passing = plan.passing;
+        const lookZ = game.z - Math.max(12, game.speed * 0.6);
+        const desired = Math.atan2(game.x - roadX(lookZ) - plan.lane, game.z - lookZ);
+        steerIn = clamp((game.yaw - desired) * 5, -1, 1);
+        thr = clamp((plan.targetSpeed - game.speed) * 0.45, 0, 1);
+        brk = clamp((game.speed - plan.targetSpeed) * 0.2, 0, 1);
+      } else S.passing = false;
       S.steer += (steerIn - S.steer) * damp(7, dt);
 
       let v = game.speed;
@@ -121,7 +139,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       const roadYaw = Math.atan(roadXd(game.z));
       const rate = FEEL.TURN * S.steer * (v / (v + 5)) / (1 + v * 0.025);
       game.yaw -= rate * dt;
-      if (Math.abs(steerIn) < 0.05) {
+      if (!auto && Math.abs(steerIn) < 0.05) {
         const target = lat >= 0 ? LANE : -LANE;
         const desired = roadYaw - clamp((target - lat) * 0.07, -0.22, 0.22);
         game.yaw += (desired - game.yaw) * damp(FEEL.ASSIST * Math.min(1, v / 8), dt);
@@ -215,7 +233,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       sun.target.position.set(game.x, game.y, game.z);
       sun.target.updateMatrixWorld();
     }
-    if (spot.current) spot.current.intensity = game.night ? 120 : 0;
+    if (spot.current) spot.current.intensity = now < game.flashUntil ? 280 : game.night ? 120 : 0;
 
     if (++S.frame % 6 === 0) {
       if (hudEls.speed) hudEls.speed.textContent = String(Math.round(game.speed * 3.6));
@@ -227,7 +245,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     <>
       <group ref={player}>
         <group ref={body}>
-          <CarModel key={car} url={`/models/${CARS.some((c) => c.id === car) ? car : "sedan-sports"}.glb`} wheels={wheels} />
+          <CarModel key={car} driverId={net.id} url={`/models/${CARS.some((c) => c.id === car) ? car : "sedan-sports"}.glb`} wheels={wheels} />
         </group>
         <primitive object={spotTarget} position={[0, 0, -25]} />
         <spotLight ref={spot} position={[0, 0.9, -2]} target={spotTarget} angle={0.55} penumbra={0.7} distance={70} decay={1.2} color="#fff1d0" />

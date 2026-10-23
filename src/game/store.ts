@@ -14,6 +14,7 @@ export const game = {
   distance: 0,
   shake: 0,
   warp: 0,
+  flashUntil: 0,
   view: "chase" as "chase" | "cockpit",
 };
 
@@ -25,6 +26,8 @@ export const net = {
   positions: new Map<string, Pose & { at: number }>(),
   teleportTo: null as string | null,
   ready: new Set<string>(),
+  flashes: new Map<string, number>(),
+  signal: null as null | ((kind: "horn" | "flash") => void),
   onRoster: null as null | (() => void),
 };
 
