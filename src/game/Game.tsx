@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { Traffic, headMat, tailMat } from "./Cars";
+import { Multiplayer } from "./Multiplayer";
 import { World, lampGlowMat, lampHeadMat } from "./World";
 import { game } from "./store";
 import type { CarId } from "./store";
@@ -70,7 +71,7 @@ function Atmosphere({ night }: { night: boolean }) {
   );
 }
 
-export function Game({ night, car }: { night: boolean; car: CarId }) {
+export function Game({ night, car, room, name }: { night: boolean; car: CarId; room: string | null; name: string }) {
   return (
     <Canvas shadows dpr={[1, 1.75]} camera={{ fov: 60, near: 0.1, far: 600, position: [0, 3, 8] }} gl={{ antialias: true }}>
       <SkyDome night={night} />
@@ -79,6 +80,7 @@ export function Game({ night, car }: { night: boolean; car: CarId }) {
         <World />
         <Traffic car={car} />
       </Suspense>
+      {room && <Multiplayer room={room} name={name} car={car} />}
     </Canvas>
   );
 }

@@ -14,7 +14,7 @@ export const tailMat = new THREE.MeshStandardMaterial({ color: "#a3262a", emissi
 
 const CAR_LEN = 4.2;
 
-function CarModel({ url, wheels }: { url: string; wheels?: React.MutableRefObject<THREE.Object3D[]> }) {
+export function CarModel({ url, wheels }: { url: string; wheels?: React.MutableRefObject<THREE.Object3D[]> }) {
   const { scene } = useGLTF(url);
   const m = useMemo(() => {
     const obj = scene.clone(true);
@@ -163,14 +163,24 @@ export function Traffic({ car }: { car: CarId }) {
     if (body.current) body.current.rotation.z = S.roll;
 
     // camera
-    S.camYaw += (game.yaw - S.camYaw) * damp(3.5, dt);
-    const dist = 8.5 + game.speed * 0.05;
-    S.camY += (game.y + 3.4 - S.camY) * damp(4, dt);
+    const fp = game.view === "cockpit";
+    if (body.current) body.current.visible = !fp;
+    S.camYaw += (game.yaw - S.camYaw) * damp(fp ? 12 : 3.5, dt);
     game.shake *= Math.exp(-4 * dt);
     const sh = game.shake * (Math.random() - 0.5);
-    camera.position.set(game.x + Math.sin(S.camYaw) * dist + sh, S.camY + sh, game.z + Math.cos(S.camYaw) * dist);
-    camera.lookAt(game.x - Math.sin(game.yaw) * 8, game.y + 1.2, game.z - Math.cos(game.yaw) * 8);
-    const fov = 58 + game.speed * 0.35;
+    if (fp) {
+      const eye = game.y + 1.15 + Math.sin(game.distance * 0.9) * 0.008 * Math.min(1, game.speed / 10);
+      S.camY = eye;
+      camera.position.set(game.x - Math.sin(game.yaw) * 0.3 + sh * 0.3, eye + sh * 0.3, game.z - Math.cos(game.yaw) * 0.3);
+      camera.lookAt(game.x - Math.sin(S.camYaw) * 20, roadY(game.z - Math.cos(game.yaw) * 20) + 1.0, game.z - Math.cos(S.camYaw) * 20);
+      camera.rotateZ(-S.roll * 0.6);
+    } else {
+      const dist = 8.5 + game.speed * 0.05;
+      S.camY += (game.y + 3.4 - S.camY) * damp(4, dt);
+      camera.position.set(game.x + Math.sin(S.camYaw) * dist + sh, S.camY + sh, game.z + Math.cos(S.camYaw) * dist);
+      camera.lookAt(game.x - Math.sin(game.yaw) * 8, game.y + 1.2, game.z - Math.cos(game.yaw) * 8);
+    }
+    const fov = (fp ? 68 : 58) + game.speed * 0.35;
     if (Math.abs(camera.fov - fov) > 0.01) { camera.fov += (fov - camera.fov) * damp(3, dt); camera.updateProjectionMatrix(); }
 
     if (sun) {
