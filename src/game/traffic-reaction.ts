@@ -4,9 +4,9 @@ export type TrafficReaction = "crash" | "accelerate" | "brake";
 export type ReactingCar = { s: number; lane: number; crashAge: number; reactionLeft?: number };
 export type BlockedCar = ReactingCar & { v: number };
 /** Roadside wrecks stay rare; most threatened NPCs speed away, some slow down. */
-export const CRASH_CHANCE = 0.05;
+export const CRASH_CHANCE = 0.02;
 export const ACCELERATE_CHANCE = 0.62;
-export const BRAKE_CHANCE = 0.33;
+export const BRAKE_CHANCE = 0.36;
 /** While a car is still in the way, blare again this often instead of a single polite toot. */
 export const SIGNAL_GAP = 0.8;
 

@@ -110,7 +110,7 @@ function GltfCar({ url, wheels, driverId }: CarModelProps) {
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number };
+type Npc = { s: number; lane: number; v: number; base: number; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean };
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
   const npcs = useMemo<Npc[]>(() => {
@@ -253,7 +253,8 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           const lean = clamp(-(n.laneVelocity - previousVelocity) / Math.max(dt, 0.001) * Math.sign(n.lane) * 0.012, -0.06, 0.06);
           n.laneRoll += (lean - n.laneRoll) * damp(6, dt);
           target = plan.speed;
-          if (plan.swerve) { n.reaction = "crash"; n.reactionLeft = 7; n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false; }
+          if (plan.swerve && !n.dodged) n.dodged = Math.random() < 0.65; // most dodges are just a nervous moment
+          if (plan.swerve && !n.dodged) { n.reaction = "crash"; n.reactionLeft = 7; n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false; }
         }
         if (same && !crashing) {
           const ahead = ps - n.s;
@@ -270,7 +271,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           n.crashAge = -1;
           n.reaction = null; n.reactionLeft = 0;
           n.impactOffset = 0; n.contactLeft = 0;
-          n.passOffset = 0; n.passing = false; delete n.crashOrigin; delete n.crashSide; n.shove = 0; n.laneVelocity = 0; n.laneRoll = 0;
+          n.passOffset = 0; n.passing = false; delete n.crashOrigin; delete n.crashSide; delete n.dodged; n.shove = 0; n.laneVelocity = 0; n.laneRoll = 0;
         }
       }
     });
