@@ -16,7 +16,7 @@ function SkyDome({ night }: { night: boolean }) {
   useFrame(({ camera }) => ref.current?.position.copy(camera.position));
   return (
     <group ref={ref}>
-      <mesh position={night ? [-120, 110, -380] : [160, 80, -400]}>
+      <mesh position={night ? [-200, 60, -380] : [160, 80, -400]}>
         <sphereGeometry args={[night ? 10 : 18, 24, 12]} />
         <meshBasicMaterial color={night ? "#f2efe2" : "#fff4d6"} fog={false} toneMapped={false} />
       </mesh>
