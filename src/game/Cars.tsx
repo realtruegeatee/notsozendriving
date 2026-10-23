@@ -13,7 +13,7 @@ import type { Passing } from "./autodrive";
 import { flashLights, horn } from "./signals";
 import { chooseTrafficReaction, npcTargetSpeed, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
-import { npcCrash, npcOffset, resolveNpcCollision } from "./npc-collision";
+import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact } from "./npc-collision";
 import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import type { DrivingNpc } from "./npc-driving";
 import { createCrashMotion, createSwerveMotion, stepCrashMotion } from "./crash-physics";
@@ -144,6 +144,9 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       game.z = 0; game.x = roadX(0) + LANE; game.yaw = Math.atan(roadXd(0)); S.camYaw = game.yaw; S.init = true;
     }
     const active = game.started && !game.paused;
+    const auto = active && game.cruise && !input.throttle && !input.brake &&
+      !input.keys["w"] && !input.keys["arrowup"] && !input.keys["s"] && !input.keys["arrowdown"] &&
+      Math.abs(input.steer + (input.keys["d"] || input.keys["arrowright"] ? 1 : 0) - (input.keys["a"] || input.keys["arrowleft"] ? 1 : 0)) < 0.05;
     const now = performance.now();
     if (net.teleportTo) {
       const friend = net.positions.get(net.teleportTo);
@@ -167,7 +170,6 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       let thr = Math.max(input.throttle, k["w"] || k["arrowup"] ? 1 : 0);
       let brk = Math.max(input.brake, k["s"] || k["arrowdown"] ? 1 : 0);
       let steerIn = clamp(input.steer + (k["d"] || k["arrowright"] ? 1 : 0) - (k["a"] || k["arrowleft"] ? 1 : 0), -1, 1);
-      const auto = game.cruise && !thr && !brk && Math.abs(steerIn) < 0.05;
       S.signalCooldown = Math.max(0, S.signalCooldown - dt);
       if (shouldAutopilotSignal(auto, game.speed, S.signalCooldown, ps, game.x - roadX(game.z), npcs)) {
         horn(); flashLights(); S.signalCooldown = SIGNAL_GAP;
@@ -303,11 +305,14 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       }
       // Contact after NPC pair separation, using the player's current position.
       for (const n of npcs) {
-        const playerS = -game.z;
-        if (Math.abs(n.s - playerS) < CAR_LEN && Math.abs(game.x - roadX(game.z) - npcOffset(n)) < 1.9) {
+        const wasCrashing = n.crashAge >= 0;
+        const push = resolveAutopilotNpcContact({ x: game.x, y: roadY(game.z), z: game.z, yaw: game.yaw }, auto, n, n.laneVelocity);
+        if (push) {
+          if (!wasCrashing && n.crashAge >= 0) {
+            n.reaction = "crash"; n.reactionLeft = 7; n.passing = false;
+          }
           game.speed *= n.lane > 0 ? 0.6 : 0.3;
-          if (n.s > playerS) game.z = -(n.s - CAR_LEN);
-          else n.s = playerS - CAR_LEN;
+          game.x += push.x; game.z += push.z;
           game.shake = 0.5;
         }
       }
