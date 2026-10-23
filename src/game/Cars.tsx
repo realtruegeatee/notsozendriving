@@ -7,7 +7,7 @@ import { groundY, LANE, ROAD_HALF, roadX, roadXd, roadY, roadYd } from "./road";
 import { CARS, FEEL, game, hudEls, input, net } from "./store";
 import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
-import { planAutodrive, ramTarget, stepImpatience, stepUnstick } from "./autodrive";
+import { planAutodrive, ramTarget, stepBump, stepImpatience, stepUnstick } from "./autodrive";
 import { maxSpeedForDistance, powerCurve } from "./speed";
 import type { Passing } from "./autodrive";
 import { flashLights, horn } from "./signals";
@@ -133,7 +133,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
   const wheels = useRef<THREE.Object3D[]>([]);
   const spot = useRef<THREE.SpotLight>(null);
   const spotTarget = useMemo(() => new THREE.Object3D(), []);
-  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false });
+  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false, backingOff: false });
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
 
   useFrame((state, raw) => {
