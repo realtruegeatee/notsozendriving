@@ -217,9 +217,9 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const offset = crash?.offset ?? n.lane;
         g.position.set(roadX(z) + offset, (crash ? groundY(z, offset) + 0.03 : roadY(z)) + (crash?.bounce ?? 0), z);
         g.rotation.set(Math.atan(-roadYd(z)) * (same ? 1 : -1), Math.atan(roadXd(z)) + (same ? 0 : Math.PI) + (crash?.yaw ?? 0), crash?.roll ?? 0, "YXZ");
-        g.userData.reaction = n.reaction;
-        g.userData.speed = n.v;
-        g.userData.baseSpeed = n.base;
+        g.userData["reaction"] = n.reaction;
+        g.userData["speed"] = n.v;
+        g.userData["baseSpeed"] = n.base;
       }
     });
 
