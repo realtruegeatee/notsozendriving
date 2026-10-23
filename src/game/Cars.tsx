@@ -8,6 +8,7 @@ import { CARS, FEEL, game, hudEls, input, net } from "./store";
 import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
 import { planAutodrive } from "./autodrive";
+import type { Passing } from "./autodrive";
 import { flashLights, horn } from "./signals";
 import { chooseTrafficReaction, npcTargetSpeed, pickRunoffVictim, roadsideCrash, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
@@ -126,7 +127,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
   const wheels = useRef<THREE.Object3D[]>([]);
   const spot = useRef<THREE.SpotLight>(null);
   const spotTarget = useMemo(() => new THREE.Object3D(), []);
-  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false, signalCooldown: 0 });
+  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, signalCooldown: 0 });
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
 
   useFrame((state, raw) => {
@@ -169,7 +170,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         }
       }
       if (auto) {
-        const cars = npcs.filter((n) => n.crashAge < 0 || Math.abs(roadsideCrash(n.crashAge, n.lane).offset) < ROAD_HALF).map((n) => ({ z: -n.s, lane: n.crashAge < 0 ? n.lane : roadsideCrash(n.crashAge, n.lane).offset, speed: n.v, same: n.lane > 0 }));
+        const cars = npcs.map((n) => ({ z: -n.s, lane: npcOffset(n), speed: n.v, same: n.lane > 0 }));
         for (const peer of net.positions.values()) if (now - peer.at < STALE_MS) cars.push({ z: peer.z, lane: peer.x - roadX(peer.z), speed: 20, same: Math.abs(peer.yaw - game.yaw) < Math.PI / 2 });
         const plan = planAutodrive(game.z, game.speed, S.passing, cars);
         S.passing = plan.passing;

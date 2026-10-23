@@ -14,3 +14,4 @@
 - [x] Let NPC cars run each other off the street when one accelerates
 - [x] Give NPCs a chance to crash off-road, accelerate, or brake in response
 - [x] Enable and verify collisions between NPC cars
+- [x] Enable and verify right-side autopilot overtaking
