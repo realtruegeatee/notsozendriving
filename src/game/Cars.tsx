@@ -16,6 +16,8 @@ import type { TrafficReaction } from "./traffic-reaction";
 import { npcCrash, npcOffset, resolveNpcCollision } from "./npc-collision";
 import { planNpcDriving, stepNpcLane } from "./npc-driving";
 import type { DrivingNpc } from "./npc-driving";
+import { createCrashMotion, stepCrashMotion } from "./crash-physics";
+import type { CrashMotion } from "./crash-physics";
 
 const MODELS = ["sedan", "suv", "hatchback-sports", "taxi", "van", "truck", "sedan-sports"].map((m) => `/models/${m}.glb`);
 // No useGLTF.preload: a rejected preload is an unhandled error on flaky networks.
@@ -111,7 +113,7 @@ function GltfCar({ url, wheels, driverId }: CarModelProps) {
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean };
+type Npc = { s: number; lane: number; v: number; base: number; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number };
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
   const npcs = useMemo<Npc[]>(() => {
@@ -262,15 +264,21 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           const ahead = ps - n.s;
           if (ahead > 0 && ahead < 10 && Math.abs(pLat - npcOffset(n)) < 2.2) target = Math.min(target, game.speed);
         }
-        n.v += (target - n.v) * damp(crashing || n.reaction === "brake" ? 3.5 : 2, dt);
-        if (crashing && n.v < 0.05) n.v = 0;
-        n.s += (same ? 1 : -1) * n.v * dt;
+        if (n.crashAge >= 0) {
+          n.crashMotion ??= createCrashMotion(n.crashOrigin ?? npcOffset(n), n.crashSpeed ?? n.v, n.crashSide ?? Math.sign(n.lane), n.shove);
+          n.s += (same ? 1 : -1) * stepCrashMotion(n.crashMotion, dt);
+          n.v = n.crashMotion.speed;
+        } else {
+          n.v += (target - n.v) * damp(n.reaction === "brake" ? 3.5 : 2, dt);
+          n.s += (same ? 1 : -1) * n.v * dt;
+        }
         const ds = n.s - ps;
         if (ds < -50 || ds > 520) {
           n.s = ps + 180 + Math.random() * 320;
           n.base = same ? 12 + Math.random() * 7 : 17 + Math.random() * 6;
           n.v = n.base;
           n.crashAge = -1;
+          delete n.crashMotion; delete n.crashSpeed;
           n.reaction = null; n.reactionLeft = 0;
           n.impactOffset = 0; n.contactLeft = 0;
           n.passOffset = 0; n.passing = false; delete n.crashOrigin; delete n.crashSide; delete n.dodged; n.shove = 0; n.laneVelocity = 0; n.laneRoll = 0;
