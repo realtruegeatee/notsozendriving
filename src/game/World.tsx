@@ -1,7 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { CHUNK, ROAD_HALF, groundY, hash, roadX, roadY } from "./road";
+import { CHUNK, ROAD_HALF, WATER_DROP, biomeWeights, groundY, hash, lakeAmount, roadX, roadY } from "./road";
 import { game } from "./store";
 
 function makeRoadTexture() {
@@ -34,6 +34,13 @@ const grassA = new THREE.Color("#93ad74");
 const grassB = new THREE.Color("#6f9467");
 const grassC = new THREE.Color("#b6b77c");
 const gravel = new THREE.Color("#b9a98c");
+const forestG = new THREE.Color("#4f7a52");
+const sandA = new THREE.Color("#dcc58e");
+const sandB = new THREE.Color("#c9a26a");
+const rockC = new THREE.Color("#8d8a83");
+const snow = new THREE.Color("#f3f2ee");
+const shore = new THREE.Color("#cdbd93");
+const tmp = new THREE.Color();
 
 function buildChunk(k: number) {
   // Road ribbon
@@ -76,6 +83,12 @@ function buildChunk(k: number) {
       else {
         const t = 0.5 + 0.5 * Math.sin(z * 0.02 + u * 0.05);
         col.copy(grassA).lerp(grassB, t).lerp(grassC, hash(i * 31 + j * 7 + k * 101) * 0.35);
+        const w = biomeWeights(z);
+        col.lerp(forestG, w.forest * 0.8);
+        col.lerp(tmp.copy(sandA).lerp(sandB, t), w.desert);
+        const h = groundY(z, u) - roadY(z);
+        if (w.alpine > 0) col.lerp(h > 22 ? snow : rockC, w.alpine * Math.min(1, Math.max(0, (h - 6) / 8)));
+        if (lakeAmount(z, u) > 0.2 && h < 0) col.lerp(shore, 0.7);
       }
       gc.push(col.r, col.g, col.b);
       if (i < grows && j < n - 1) {
@@ -89,16 +102,34 @@ function buildChunk(k: number) {
   ground.setAttribute("color", new THREE.Float32BufferAttribute(gc, 3));
   ground.setIndex(gi);
   ground.computeVertexNormals();
-  return { road, ground };
+
+  // Water strip on both sides; it sinks out of sight wherever there is no lake.
+  const wp: number[] = [], wi: number[] = [];
+  const WU = [-160, -12, 12, 160];
+  for (let i = 0; i <= grows; i++) {
+    const z = -(k * CHUNK + (i * CHUNK) / grows);
+    const cx = roadX(z);
+    for (let j = 0; j < 4; j++) {
+      const u = WU[j]!;
+      wp.push(cx + u, roadY(z) - WATER_DROP - (1 - lakeAmount(z, u)) * 30, z);
+      if (i < grows && j !== 1 && j < 3) { const a = i * 4 + j, b = a + 1, c = a + 4, d = c + 1; wi.push(a, b, c, b, d, c); }
+    }
+  }
+  const water = new THREE.BufferGeometry();
+  water.setAttribute("position", new THREE.Float32BufferAttribute(wp, 3));
+  water.setIndex(wi);
+  water.computeVertexNormals();
+  return { road, ground, water };
 }
 
-function Chunk({ k, roadMat, groundMat }: { k: number; roadMat: THREE.Material; groundMat: THREE.Material }) {
+function Chunk({ k, roadMat, groundMat, waterMat }: { k: number; roadMat: THREE.Material; groundMat: THREE.Material; waterMat: THREE.Material }) {
   const g = useMemo(() => buildChunk(k), [k]);
-  useEffect(() => () => { g.road.dispose(); g.ground.dispose(); }, [g]);
+  useEffect(() => () => { g.road.dispose(); g.ground.dispose(); g.water.dispose(); }, [g]);
   return (
     <>
       <mesh geometry={g.ground} material={groundMat} receiveShadow />
       <mesh geometry={g.road} material={roadMat} receiveShadow />
+      <mesh geometry={g.water} material={waterMat} />
     </>
   );
 }
@@ -110,6 +141,10 @@ const TREE_STEP = 7;
 const ROCK_STEP = 11;
 const LAMP_STEP = 50;
 const MAXT = 200;
+const dryFoliage = ["#a8a66a", "#8f9a5a", "#c4b27a"].map((c) => new THREE.Color(c));
+const pineFoliage = ["#3f6b4c", "#4c7a57", "#2f5a44"].map((c) => new THREE.Color(c));
+const MOUNT_STEP = 90;
+const MAXM = 24;
 const foliage = ["#7fa67a", "#9bbf7a", "#5f8f6a", "#d9a86c", "#c98a6b", "#a8bf86"].map((c) => new THREE.Color(c));
 
 function Scenery() {
@@ -120,6 +155,8 @@ function Scenery() {
   const poles = useRef<THREE.InstancedMesh>(null);
   const heads = useRef<THREE.InstancedMesh>(null);
   const glows = useRef<THREE.InstancedMesh>(null);
+  const mounts = useRef<THREE.InstancedMesh>(null);
+  const caps = useRef<THREE.InstancedMesh>(null);
   const last = useRef(-9999);
   const d = useMemo(() => new THREE.Object3D(), []);
 
@@ -133,9 +170,12 @@ function Scenery() {
     let t = 0;
     for (let i = Math.floor(from / TREE_STEP); i < to / TREE_STEP && t < MAXT; i++) {
       for (const side of [-1, 1]) {
-        if (hash(i * 2 + side) < 0.3) continue;
         const z = -i * TREE_STEP - hash(i + side * 3) * 4;
-        const u = side * (10 + hash(i * 3 + side * 7) * 55);
+        const w = biomeWeights(z);
+        const skip = 0.3 - 0.28 * w.forest + 0.62 * w.desert + 0.3 * w.alpine;
+        if (hash(i * 2 + side) < skip) continue;
+        const u = side * (10 + hash(i * 3 + side * 7) * (55 - 30 * w.forest));
+        if (lakeAmount(z, u) > 0.3 && Math.abs(u) > 12) continue;
         const x = roadX(z) + u;
         const y = groundY(z, u);
         const sc = 0.8 + hash(i * 5 + side) * 1.3;
@@ -144,7 +184,8 @@ function Scenery() {
         d.position.set(x, y + 0.8 * sc, z); d.updateMatrix(); trunk.current!.setMatrixAt(t, d.matrix);
         d.position.set(x, y + 2.6 * sc, z); d.updateMatrix(); leafA.current!.setMatrixAt(t, d.matrix);
         d.position.set(x, y + 3.9 * sc, z); d.scale.setScalar(sc * 0.7); d.updateMatrix(); leafB.current!.setMatrixAt(t, d.matrix);
-        const c = foliage[Math.floor(hash(i * 7 + side) * foliage.length)]!;
+        const pick = hash(i * 7 + side);
+        const c = w.desert > 0.5 ? dryFoliage[Math.floor(pick * dryFoliage.length)]! : w.alpine > 0.5 || w.forest > 0.5 ? pineFoliage[Math.floor(pick * pineFoliage.length)]! : foliage[Math.floor(pick * foliage.length)]!;
         leafA.current!.setColorAt(t, c); leafB.current!.setColorAt(t, c);
         t++;
         if (t >= MAXT) break;
@@ -159,9 +200,11 @@ function Scenery() {
     let r = 0;
     for (let i = Math.floor(from / ROCK_STEP); i < to / ROCK_STEP && r < 100; i++) {
       const side = hash(i * 9) > 0.5 ? 1 : -1;
-      if (hash(i * 13) < 0.4) continue;
       const z = -i * ROCK_STEP;
+      const rw = biomeWeights(z);
+      if (hash(i * 13) < 0.4 - 0.3 * (rw.desert + rw.alpine)) continue;
       const u = side * (7.5 + hash(i * 17) * 30);
+      if (lakeAmount(z, u) > 0.3 && Math.abs(u) > 12) continue;
       const sc = 0.3 + hash(i * 19) * 1.1;
       d.position.set(roadX(z) + u, groundY(z, u) + sc * 0.2, z);
       d.rotation.set(hash(i) * 3, hash(i * 2) * 3, 0);
@@ -171,6 +214,26 @@ function Scenery() {
     }
     rocks.current!.count = r;
     rocks.current!.instanceMatrix.needsUpdate = true;
+    // distant mountain range, tall and snowy in alpine stretches
+    let mc = 0;
+    for (let i = Math.floor((s0 - 100) / MOUNT_STEP); i < (s0 + 900) / MOUNT_STEP && mc < MAXM; i++) {
+      const z = -i * MOUNT_STEP;
+      const w = biomeWeights(z);
+      const side = hash(i * 23) > 0.5 ? 1 : -1;
+      const u = side * (200 + hash(i * 29) * 160);
+      const h = (25 + hash(i * 31) * 35) * (0.5 + 1.8 * w.alpine) * (1 - 0.5 * w.desert);
+      const y = roadY(z) - 4;
+      d.rotation.set(0, hash(i) * 6, 0);
+      d.scale.set(h * 1.4, h, h * 1.4);
+      d.position.set(roadX(z) + u, y + h / 2, z); d.updateMatrix(); mounts.current!.setMatrixAt(mc, d.matrix);
+      mounts.current!.setColorAt(mc, tmp.copy(rockC).lerp(sandB, w.desert).lerp(forestG, w.forest * 0.6));
+      const capped = h > 45;
+      d.scale.set(capped ? h * 0.5 : 0.001, capped ? h * 0.36 : 0.001, capped ? h * 0.5 : 0.001);
+      d.position.set(roadX(z) + u, y + h * 0.82, z); d.updateMatrix(); caps.current!.setMatrixAt(mc, d.matrix);
+      mc++;
+    }
+    for (const m of [mounts, caps]) { m.current!.count = mc; m.current!.instanceMatrix.needsUpdate = true; }
+    if (mounts.current!.instanceColor) mounts.current!.instanceColor.needsUpdate = true;
     // lamps
     let l = 0;
     for (let i = Math.floor(from / LAMP_STEP); i < to / LAMP_STEP && l < 14; i++) {
@@ -207,6 +270,14 @@ function Scenery() {
         <icosahedronGeometry args={[1, 0]} />
         <meshStandardMaterial color="#a39d92" roughness={1} flatShading />
       </instancedMesh>
+      <instancedMesh ref={mounts} args={[undefined, undefined, MAXM]} frustumCulled={false}>
+        <coneGeometry args={[1, 1, 6]} />
+        <meshStandardMaterial roughness={1} flatShading />
+      </instancedMesh>
+      <instancedMesh ref={caps} args={[undefined, undefined, MAXM]} frustumCulled={false}>
+        <coneGeometry args={[1, 1, 6]} />
+        <meshStandardMaterial color="#f3f2ee" roughness={1} flatShading />
+      </instancedMesh>
       <instancedMesh ref={poles} args={[undefined, undefined, 14]} castShadow frustumCulled={false}>
         <boxGeometry args={[0.18, 5.6, 0.18]} />
         <meshStandardMaterial color="#3d4248" roughness={0.6} metalness={0.4} />
@@ -224,6 +295,7 @@ function Scenery() {
 export function World() {
   const [base, setBase] = useState(0);
   const roadMat = useMemo(() => new THREE.MeshStandardMaterial({ map: makeRoadTexture(), roughness: 0.92 }), []);
+  const waterMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#5d93a8", roughness: 0.15, metalness: 0.3, transparent: true, opacity: 0.88, side: THREE.DoubleSide }), []);
   const groundMat = useMemo(() => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true }), []);
   useFrame(() => {
     const b = Math.floor(-game.z / CHUNK);
@@ -233,7 +305,7 @@ export function World() {
   for (let k = base - 1; k <= base + 5; k++) ks.push(k);
   return (
     <>
-      {ks.map((k) => <Chunk key={k} k={k} roadMat={roadMat} groundMat={groundMat} />)}
+      {ks.map((k) => <Chunk key={k} k={k} roadMat={roadMat} groundMat={groundMat} waterMat={waterMat} />)}
       <Scenery />
     </>
   );
