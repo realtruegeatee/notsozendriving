@@ -62,6 +62,9 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   if (oncoming) {
     if (currentLane < 0 && mergeSafe && escapePathClear(LANE)) next = false;
     else if (!rightBlocked && escapePathClear(RIGHT_PASS)) next = "right";
+    // A stationary car is an obstacle, not a moving head-on encounter.
+    // If the shoulder is occupied, use a clear opposite lane to go around it.
+    else if (!leftBlocked && escapePathClear(-LANE) && cars.some((c) => !c.same && c.speed < 1 && z - c.z > 10 && overlaps(c, currentLane))) next = true;
   }
   // Reckless but never parked: it always keeps creeping so it cannot get stuck.
   const CREEP = 3;

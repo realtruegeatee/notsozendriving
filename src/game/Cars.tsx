@@ -113,7 +113,7 @@ function GltfCar({ url, wheels, driverId }: CarModelProps) {
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number };
+type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number };
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
   const npcs = useMemo<Npc[]>(() => {
@@ -249,6 +249,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       const same = n.lane > 0;
       if (active) {
         n.contactLeft = Math.max(0, n.contactLeft - dt);
+        n.recoveryLeft = Math.max(0, (n.recoveryLeft ?? 0) - dt);
         n.impactOffset *= Math.exp(-0.8 * dt);
         const crashing = n.crashAge >= 0;
         if (crashing) n.crashAge += dt;
@@ -256,7 +257,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         if (!crashing && n.reactionLeft === 0) n.reaction = null;
         let target = npcTargetSpeed(n.base, n.reaction, crashing);
         if (!crashing) {
-          const plan = plans[i];
+          const plan = n.recoveryLeft > 0 ? { passing: false, passOffset: 0, speed: Math.max(6, n.base * 0.7), swerve: false } : plans[i];
           if (!plan) return;
           n.passing = plan.passing;
           const previousVelocity = n.laneVelocity;
@@ -292,6 +293,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           delete n.crashMotion; delete n.crashSpeed;
           n.reaction = null; n.reactionLeft = 0;
           n.impactOffset = 0; n.contactLeft = 0;
+          n.recoveryLeft = 0;
           n.passOffset = 0; n.passing = false; delete n.crashOrigin; delete n.crashSide; delete n.dodged; n.shove = 0; n.laneVelocity = 0; n.laneRoll = 0;
         }
       }
