@@ -377,10 +377,13 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
             // Push it: hand momentum to the car ahead instead of just stopping dead.
             const share = (game.speed - n.v) * 0.6;
             n.v += share; n.s += Math.min(1.5, share * 0.08);
-            game.speed -= share * 0.5;
-          } else game.speed *= n.lane > 0 ? 0.85 : 0.3;
-          game.x += push.x; game.z += push.z;
-          game.shake = 0.5;
+            game.speed -= share * (auto ? 0.15 : 0.5);
+          } else if (auto) game.speed *= n.lane > 0 ? 0.97 : 0.7;
+          else game.speed *= n.lane > 0 ? 0.85 : 0.3;
+          // On autopilot the car holds its line: only a nudge of the contact push applies.
+          const firmness = auto ? 0.25 : 1;
+          game.x += push.x * firmness; game.z += push.z * firmness;
+          game.shake = auto ? 0.2 : 0.5;
         }
       }
     }
