@@ -4,6 +4,7 @@ import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact } 
 import type { CollisionNpc } from "./npc-collision";
 import { LANE, groundY, roadX, roadXd } from "./road";
 import { createCrashMotion, stepCrashMotion } from "./crash-physics";
+import { planNpcDriving, stepNpcLane } from "./npc-driving";
 
 const npc = (s: number, v: number, lane = LANE) => ({ s, v, lane, crashAge: -1, impactOffset: 0, contactLeft: 0 });
 const playerPose = (s: number, lane = LANE) => ({ x: roadX(-s) + lane, y: groundY(-s, lane), z: -s, yaw: Math.atan(roadXd(-s)) });
@@ -136,4 +137,21 @@ it("contact with a wreck keeps the second driver recoverable", () => {
   expect(driver.crashAge).toBe(-1);
   expect(driver.recoveryLeft).toBe(1.2);
   expect(driver.v).toBeGreaterThan(0);
+});
+it("the surviving NPC smoothly regains speed and continues in its original direction", () => {
+  const victim: CollisionNpc = { ...npc(50, 15), passOffset: -2 * LANE };
+  const survivor: CollisionNpc = npc(51, 20, -LANE);
+  resolveNpcCollision(victim, survivor);
+  const start = survivor.s;
+  const driver = { ...survivor, base: 20, passOffset: survivor.passOffset ?? 0, passing: false, laneVelocity: 0 };
+  for (let i = 0; i < 300; i++) {
+    const plan = planNpcDriving(driver, [driver], driver.base);
+    const step = stepNpcLane(driver.passOffset, driver.laneVelocity, plan.passOffset, driver.v, 1 / 60);
+    driver.passOffset = step.offset; driver.laneVelocity = step.velocity;
+    driver.v += (plan.speed - driver.v) * (1 - Math.exp(-2 / 60));
+    driver.s += Math.sign(driver.lane) * driver.v / 60;
+  }
+  expect(driver.crashAge).toBe(-1);
+  expect(driver.s).toBeLessThan(start - 60);
+  expect(driver.v).toBeGreaterThan(19);
 });

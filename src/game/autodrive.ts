@@ -17,7 +17,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   const overlaps = (c: RoadCar, lane: number, seconds = 0) => Math.abs(predictedLane(c, seconds) - lane) < 2.2;
   const closing = (c: RoadCar) => c.same ? speed - c.speed : Math.max(0, speed) + c.speed;
   const encounter = (c: RoadCar) => Math.max(0, (z - c.z) / Math.max(1, closing(c)));
-  const ahead = cars.filter((c) => c.same && (overlaps(c, LANE) || overlaps(c, LANE, 1)) && z - c.z > -6 && z - c.z < Math.max(90, speed * 2.5));
+  const ahead = cars.filter((c) => (c.same || c.speed < 1) && (overlaps(c, LANE) || overlaps(c, LANE, 1)) && z - c.z > -6 && z - c.z < Math.max(90, speed * 2.5));
   const blocker = ahead.filter((c) => c.speed < maxSpeed - 2).sort((a, b) => (z - a.z) - (z - b.z))[0];
   const blocked = (lane: number) => cars.some((c) => {
     const gap = z - c.z;

@@ -242,3 +242,8 @@ it("does not pass a stationary oncoming car into another occupied lane", () => {
   expect(result.lane).toBe(LANE);
   expect(result.targetSpeed).toBeLessThan(34);
 });
+it("holds a left pass around a stopped oncoming car until safely beyond it", () => {
+  const obstacle = { z: -20, lane: LANE, speed: 0, same: false };
+  expect(planAutodrive(0, 6, true, [obstacle], 0, 0.05, -LANE).lane).toBe(-LANE);
+  expect(planAutodrive(-32, 6, true, [obstacle], 0, 0.05, -LANE).lane).toBe(LANE);
+});
