@@ -29,9 +29,9 @@ export function stepCrashMotion(motion: CrashMotion, dt: number): number {
     if (motion.swerveTarget !== undefined) {
       const error = motion.swerveTarget - motion.offset;
       // A bounded steering angle makes a curved exit, then countersteers to straighten in the grass.
-      const targetLateral = Math.max(-motion.speed * 0.38, Math.min(motion.speed * 0.38, error * 1.8));
+      const targetLateral = Math.max(-motion.speed * 0.38, Math.min(motion.speed * 0.38, error * 1.4));
       const previousLateral = motion.lateral;
-      motion.lateral += (targetLateral - motion.lateral) * (1 - Math.exp(-4 * h));
+      motion.lateral += (targetLateral - motion.lateral) * (1 - Math.exp(-6 * h));
       if (motion.speed === 0 && Math.abs(motion.lateral) < 0.01) motion.lateral = 0;
       motion.offset += (previousLateral + motion.lateral) * 0.5 * h;
       const heading = -Math.atan2(motion.lateral, Math.max(0.5, motion.speed));
