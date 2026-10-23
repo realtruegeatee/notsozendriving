@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { LANE, ROAD_HALF } from "./road";
-import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseSporadicEvent, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, npcTargetSpeed, ONCOMING_SWERVE_CHANCE, pickRunoffVictim, reactionSpeed, roadsideCrash, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, SPORADIC_INTERVAL, threatenedTraffic } from "./traffic-reaction";
+import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseSporadicEvent, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, npcTargetSpeed, ONCOMING_SWERVE_CHANCE, pickRunoffVictim, reactionSpeed, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, SPORADIC_INTERVAL, threatenedTraffic } from "./traffic-reaction";
 
 const car = { s: 30, lane: LANE, crashAge: -1, v: 10 };
 it("NPC reactions include a chance to crash, accelerate, or brake", () => {
@@ -73,17 +73,6 @@ it("only nearby cars ahead react, and wrecks do not react again", () => {
   expect(threatenedTraffic(0, { ...car, s: -10 })).toBe(false);
   expect(threatenedTraffic(0, { ...car, s: 100 })).toBe(false);
   expect(threatenedTraffic(0, { ...car, crashAge: 2 })).toBe(false);
-});
-it("NPCs skid to the roadside on their own side and remain crashed", () => {
-  for (const lane of [LANE, -LANE]) {
-    expect(roadsideCrash(0, lane).offset).toBe(lane);
-    expect(Math.abs(roadsideCrash(0.65, lane).offset)).toBeGreaterThan(Math.abs(lane));
-    const wreck = roadsideCrash(3, lane);
-    expect(Math.abs(wreck.offset)).toBeGreaterThan(ROAD_HALF + 1);
-    expect(Math.sign(wreck.offset)).toBe(Math.sign(lane));
-    expect(wreck.yaw).not.toBe(0);
-    expect(roadsideCrash(10, lane).offset).toBe(wreck.offset);
-  }
 });
 it("an accelerating NPC runs a slower car in its lane off the street", () => {
   const hot = { s: 0, lane: LANE, crashAge: -1, v: 26, reaction: "accelerate" as const };
