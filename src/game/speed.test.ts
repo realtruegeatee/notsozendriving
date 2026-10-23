@@ -38,3 +38,8 @@ it("reaches 200 km/h under full throttle once unlocked", () => {
   expect(v * 3.6).toBeGreaterThanOrEqual(198);
   expect(v * 3.6).toBeLessThanOrEqual(200);
 });
+import { maxSpeedForDistance as msd } from "./speed";
+test("max speed rises to 300 km/h at 10 km", () => {
+  expect(msd(9999) * 3.6).toBeCloseTo(200, 6);
+  expect(msd(10000) * 3.6).toBeCloseTo(300, 6);
+});
