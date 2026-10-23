@@ -34,6 +34,7 @@ export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], des
   // Stuck beside traffic with the pass closing: drop back behind it so the merge opens up.
   if (passing && !passClear && !mergeClear && blocker) speed = Math.min(speed, blocker.v * 0.6);
   const target = passing ? passingLane : car.lane;
+  let swerve = false;
   for (const other of cars) {
     if (other === car) continue;
     const distance = gap(other);
@@ -44,10 +45,11 @@ export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], des
     // The car out of its home lane yields fully; the other eases off and only stops when very close.
     if (other.lane * car.lane < 0) {
       const outOfLane = passing || Math.abs(offset - car.lane) > 0.5;
-      const floor = outOfLane || distance < 25 ? 0 : desiredSpeed * 0.6;
-      speed = Math.min(speed, Math.max(floor, (distance - 12) * 0.3));
+      // An overtaker coming at us in our lane: dive for the roadside instead of stopping.
+      if (!outOfLane) { if (distance < 40) swerve = true; continue; }
+      speed = Math.min(speed, Math.max(0, (distance - 12) * 0.3));
     }
     else speed = Math.min(speed, Math.max(0, other.v + (distance - 12) * 0.6));
   }
-  return { passing, passOffset: passing ? -2 * car.lane : 0, speed };
+  return { passing, passOffset: passing ? -2 * car.lane : 0, speed, swerve };
 }
