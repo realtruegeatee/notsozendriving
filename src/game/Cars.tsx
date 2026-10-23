@@ -12,7 +12,7 @@ import { planAutodrive, ramTarget, stepBump, stepImpatience, stepUnstick } from 
 import { maxSpeedForDistance, powerCurve } from "./speed";
 import type { Passing } from "./autodrive";
 import { flashLights, horn, trafficSignalRevision } from "./signals";
-import { chooseSporadicEvent, chooseTrafficReaction, npcTargetSpeed, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
+import { chooseSporadicEvent, chooseTrafficReaction, npcTargetSpeed, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, signalLossMotion, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
 import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact, crashVisible } from "./npc-collision";
 import { canDriveAgain } from "./crash-physics";
@@ -182,7 +182,11 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         S.signalRevision = trafficSignalRevision();
         for (const n of npcs) if (threatenedTraffic(ps, n)) {
           n.reaction = chooseTrafficReaction(Math.random()); n.reactionLeft = 2.5;
-          if (n.reaction === "crash" && crashVisible(ps, n)) { n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false; }
+          if (n.reaction === "crash" && crashVisible(ps, n)) {
+            n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane);
+            n.crashMotion = signalLossMotion(n.crashOrigin, n.v, n.crashSide, n.laneVelocity);
+            n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false;
+          }
           else n.reaction = "panic";
         }
       }
