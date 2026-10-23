@@ -11,7 +11,7 @@ import { aggressionProfile } from "./aggression";
 import { planAutodrive, ramTarget, stepBump, stepImpatience, stepUnstick } from "./autodrive";
 import { maxSpeedForDistance, powerCurve } from "./speed";
 import type { Passing } from "./autodrive";
-import { flashLights, horn } from "./signals";
+import { flashLights, horn, trafficSignalRevision } from "./signals";
 import { chooseSporadicEvent, chooseTrafficReaction, npcTargetSpeed, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
 import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact, crashVisible } from "./npc-collision";
@@ -135,7 +135,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
   const wheels = useRef<THREE.Object3D[]>([]);
   const spot = useRef<THREE.SpotLight>(null);
   const spotTarget = useMemo(() => new THREE.Object3D(), []);
-  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false, backingOff: false });
+  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, signalRevision: trafficSignalRevision(), stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false, backingOff: false });
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
 
   useFrame((state, raw) => {
@@ -177,9 +177,13 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       const prof = aggressionProfile(game.aggro);
       if (prof.signals && shouldAutopilotSignal(auto, game.speed, S.signalCooldown, ps, game.x - roadX(game.z), npcs)) {
         horn(); flashLights(); S.signalCooldown = SIGNAL_GAP;
+      }
+      if (S.signalRevision !== trafficSignalRevision()) {
+        S.signalRevision = trafficSignalRevision();
         for (const n of npcs) if (threatenedTraffic(ps, n)) {
-          n.reaction = chooseTrafficReaction(Math.random()); n.reactionLeft = 7;
-          if (n.reaction === "crash") { n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; }
+          n.reaction = chooseTrafficReaction(Math.random()); n.reactionLeft = 2.5;
+          if (n.reaction === "crash" && crashVisible(ps, n)) { n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false; }
+          else n.reaction = "panic";
         }
       }
       if (auto) {
@@ -332,7 +336,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
             }
           } else n.restFor = 0;
         } else {
-          n.v += (target - n.v) * damp(n.reaction === "brake" ? 3.5 : 2, dt);
+          n.v += (target - n.v) * damp(n.reaction === "panic" ? 4 : n.reaction === "brake" ? 3.5 : 2, dt);
           n.s += (same ? 1 : -1) * n.v * dt;
         }
         const ds = n.s - ps;

@@ -3,19 +3,24 @@ import { LANE } from "./road";
 import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseSporadicEvent, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, npcTargetSpeed, ONCOMING_SWERVE_CHANCE, pickRunoffVictim, reactionSpeed, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, SPORADIC_INTERVAL, threatenedTraffic } from "./traffic-reaction";
 
 const car = { s: 30, lane: LANE, crashAge: -1, v: 10 };
-it("NPC reactions include a chance to crash, accelerate, or brake", () => {
+it("horns and flashes never make NPCs brake", () => {
   expect(chooseTrafficReaction(0.01)).toBe("crash");
-  expect(chooseTrafficReaction(0.5)).toBe("accelerate");
-  expect(chooseTrafficReaction(0.9)).toBe("brake");
+  for (let i = 0; i <= 1000; i++) expect(chooseTrafficReaction(i / 1000)).not.toBe("brake");
+  expect(BRAKE_CHANCE).toBe(0);
 });
-it("more NPCs crash while acceleration remains the common reaction", () => {
+it("signals provoke more roadside panic while fleeing remains most common", () => {
   expect(chooseTrafficReaction(0.06)).toBe("crash");
-  expect(chooseTrafficReaction(0.6)).toBe("accelerate");
-  expect(chooseTrafficReaction(0.63)).toBe("accelerate");
-  expect(chooseTrafficReaction(0.75)).toBe("brake");
-  expect(CRASH_CHANCE).toBe(0.12);
+  expect(chooseTrafficReaction(0.299)).toBe("crash");
+  expect(chooseTrafficReaction(0.3)).toBe("panic");
+  expect(chooseTrafficReaction(0.75)).toBe("panic");
+  expect(CRASH_CHANCE).toBeGreaterThan(0.12);
   expect(ACCELERATE_CHANCE).toBeGreaterThan(0.5);
   expect(CRASH_CHANCE + ACCELERATE_CHANCE + BRAKE_CHANCE).toBeCloseTo(1, 10);
+});
+it("panicking cars accelerate harder than ordinary bursts without removing spontaneous braking", () => {
+  expect(reactionSpeed(16, "panic")).toBeGreaterThan(reactionSpeed(16, "accelerate"));
+  expect(reactionSpeed(40, "panic")).toBe(45);
+  expect(chooseSporadicEvent(0.5)).toBe("brake");
 });
 it("oncoming encounters have a higher but bounded roadside swerve chance", () => {
   expect(ONCOMING_SWERVE_CHANCE).toBe(0.55);
