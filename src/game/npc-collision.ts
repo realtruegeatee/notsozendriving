@@ -1,6 +1,5 @@
 import { carContact } from "./multiplayer-math";
 import { groundY, roadX, roadXd } from "./road";
-import { roadsideCrash } from "./traffic-reaction";
 import type { CrashMotion } from "./crash-physics";
 import { createCrashMotion, createSwerveMotion } from "./crash-physics";
 import type { Pose } from "./multiplayer-math";
