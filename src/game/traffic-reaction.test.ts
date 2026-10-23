@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { LANE, ROAD_HALF } from "./road";
-import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, reactionSpeed, roadsideCrash, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
+import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, pickRunoffVictim, reactionSpeed, roadsideCrash, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 
 const car = { s: 30, lane: LANE, crashAge: -1, v: 10 };
 it("NPC reactions include a chance to crash, accelerate, or brake", () => {
@@ -75,4 +75,20 @@ it("NPCs skid to the roadside on their own side and remain crashed", () => {
     expect(wreck.yaw).not.toBe(0);
     expect(roadsideCrash(10, lane).offset).toBe(wreck.offset);
   }
+});
+it("an accelerating NPC runs a slower car in its lane off the street", () => {
+  const hot = { s: 0, lane: LANE, crashAge: -1, v: 26, reaction: "accelerate" as const };
+  const slow = { s: 12, lane: LANE, crashAge: -1, v: 12, reaction: null };
+  expect(pickRunoffVictim(hot, [slow])).toBe(slow);
+  expect(pickRunoffVictim({ ...hot, reaction: null }, [slow])).toBeNull();
+  expect(pickRunoffVictim(hot, [{ ...slow, lane: -LANE }])).toBeNull();
+  expect(pickRunoffVictim(hot, [{ ...slow, v: 25 }])).toBeNull();
+  expect(pickRunoffVictim(hot, [{ ...slow, s: 200 }])).toBeNull();
+  expect(pickRunoffVictim(hot, [{ ...slow, crashAge: 1 }])).toBeNull();
+});
+it("the nearest car in the way is the one that gets shoved", () => {
+  const hot = { s: 0, lane: LANE, crashAge: -1, v: 26, reaction: "accelerate" as const };
+  const slow = { s: 12, lane: LANE, crashAge: -1, v: 12, reaction: null };
+  const near = { ...slow, s: 8 }, far = { ...slow, s: 18 };
+  expect(pickRunoffVictim(hot, [far, near])).toBe(near);
 });
