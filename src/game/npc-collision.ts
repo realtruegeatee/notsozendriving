@@ -50,7 +50,7 @@ export function resolveAutopilotNpcContact(player: Pose, autopilot: boolean, car
     // A hard hit from the player launches the car like NPC-on-NPC impacts do:
     // it tumbles away comically instead of just slowing the player down.
     const speed = impactSpeed(playerSpeed, car);
-    if (speed > 9) {
+    if (playerSpeed > 9 && speed > 9) {
       const severity = Math.min(2, Math.max(0.6, speed / 14));
       const offset = npcOffset(car);
       const lat = dx * Math.cos(player.yaw) - dz * Math.sin(player.yaw);
