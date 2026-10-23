@@ -54,7 +54,7 @@ it("falls silent once the car ahead is no longer in the way", () => {
   let cooldown = 0, fired = 0;
   for (let t = 0; t < 5; t += 1 / 60) {
     cooldown = Math.max(0, cooldown - 1 / 60);
-    const blocking = t < 1 ? [car] : [{ ...car, v: 26 }];
+    const blocking = t < 0.5 ? [car] : [{ ...car, v: 26 }];
     if (shouldAutopilotSignal(true, 20, cooldown, 0, LANE, blocking)) { fired++; cooldown = SIGNAL_GAP; }
   }
   expect(fired).toBe(1);
