@@ -15,4 +15,4 @@
 - [x] Give NPCs a chance to crash off-road, accelerate, or brake in response
 - [x] Enable and verify collisions between NPC cars
 - [x] Enable and verify right-side autopilot overtaking
-- [ ] Delay right-side overtaking until autopilot loses patience behind slower traffic
+- [x] Delay right-side overtaking until autopilot loses patience behind slower traffic
