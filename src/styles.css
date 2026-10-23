@@ -63,14 +63,14 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
+  --background: oklch(0.93 0.03 75);
+  --foreground: oklch(0.25 0.03 220);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
+  --primary: oklch(0.42 0.06 200);
+  --primary-foreground: oklch(0.97 0.015 80);
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
   --muted: oklch(0.968 0.007 247.896);
@@ -142,3 +142,54 @@
     color: var(--color-foreground);
   }
 }
+
+:root {
+  --font-display: "Cormorant Garamond", serif;
+  --font-body: "Karla", sans-serif;
+  --glass: oklch(0.97 0.015 80 / 0.55);
+  --glass-border: oklch(1 0 0 / 0.5);
+  --glass-ink: oklch(0.25 0.03 220);
+  --gas: oklch(0.72 0.09 160 / 0.6);
+  --brake: oklch(0.7 0.09 30 / 0.6);
+}
+body { font-family: var(--font-body); overscroll-behavior: none; }
+.zen-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 1.5rem;
+  background: radial-gradient(ellipse at center, oklch(0.2 0.03 230 / 0.15), oklch(0.2 0.03 230 / 0.45)); }
+.zen-card { width: min(100%, 380px); text-align: center; padding: 2rem 1.5rem; border-radius: 1.75rem;
+  background: var(--glass); border: 1px solid var(--glass-border); color: var(--glass-ink); backdrop-filter: blur(14px);
+  animation: zen-in 0.8s ease both; }
+.zen-kicker { font-size: 0.7rem; letter-spacing: 0.35em; text-transform: uppercase; opacity: 0.7; }
+.zen-title { font-family: var(--font-display); font-style: italic; font-size: 3.4rem; line-height: 1; margin: 0.4rem 0; }
+.zen-sub { opacity: 0.8; margin-bottom: 1.4rem; }
+.zen-toggle { display: inline-flex; padding: 4px; border-radius: 999px; background: oklch(0.25 0.03 220 / 0.1); margin-bottom: 1.2rem; }
+.zen-toggle button { display: flex; align-items: center; gap: 6px; padding: 0.5rem 1.1rem; border-radius: 999px; font-weight: 600; transition: all .3s; }
+.zen-toggle button[data-on="true"] { background: var(--primary); color: var(--primary-foreground); }
+.zen-start { display: block; width: 100%; padding: 0.95rem; border-radius: 999px; background: var(--primary); color: var(--primary-foreground);
+  font-weight: 600; letter-spacing: 0.05em; transition: transform .2s; }
+.zen-start:active { transform: scale(0.97); }
+.zen-hint { font-size: 0.75rem; opacity: 0.6; margin-top: 1rem; }
+.zen-hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; user-select: none; -webkit-user-select: none; }
+.zen-hud button, .zen-steer, .zen-overlay { pointer-events: auto; }
+.zen-top { display: flex; justify-content: space-between; align-items: flex-start; padding: max(env(safe-area-inset-top), 14px) 14px 0; }
+.zen-glass { background: var(--glass); border: 1px solid var(--glass-border); color: var(--glass-ink); backdrop-filter: blur(10px); }
+.zen-readout { display: flex; align-items: baseline; gap: 5px; padding: 0.45rem 0.9rem; border-radius: 999px; }
+.zen-num { font-family: var(--font-display); font-size: 1.7rem; font-weight: 500; font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
+.zen-num-sm { font-size: 1.2rem; }
+.zen-unit { font-size: 0.7rem; opacity: 0.7; }
+.zen-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: 0.4; margin: 0 6px; align-self: center; }
+.zen-actions { display: flex; gap: 8px; }
+.zen-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; }
+.zen-icon[data-on="true"] { background: var(--primary); color: var(--primary-foreground); }
+.zen-controls { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px;
+  padding: 0 14px max(env(safe-area-inset-bottom), 18px); }
+.zen-pedal { width: 74px; height: 96px; border-radius: 22px; font-weight: 600; font-size: 0.8rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--glass-ink); border: 1px solid var(--glass-border); backdrop-filter: blur(10px); touch-action: none; transition: transform .1s; }
+.zen-pedal:active { transform: scale(0.94); }
+.zen-gas { background: var(--gas); }
+.zen-brake { background: var(--brake); }
+.zen-steer { position: relative; flex: 1; height: 64px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px); touch-action: none; display: grid; place-items: center; }
+.zen-steer-line { position: absolute; left: 28px; right: 28px; height: 2px; background: var(--glass-ink); opacity: 0.2; }
+.zen-steer-knob { width: 48px; height: 48px; border-radius: 50%; background: var(--primary); box-shadow: 0 6px 20px oklch(0.2 0.03 230 / 0.35); transition: transform 0.25s cubic-bezier(.2,.8,.2,1); }
+.zen-steer:active .zen-steer-knob { transition: none; }
+@keyframes zen-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }

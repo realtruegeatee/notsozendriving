@@ -58,7 +58,7 @@ function Atmosphere({ night }: { night: boolean }) {
   }, [night, scene, p]);
   return (
     <>
-      <hemisphereLight args={[p.top, night ? "#1c2333" : "#8a8a5c", p.amb]} />
+      <hemisphereLight key={String(night)} args={[p.top, night ? "#1c2333" : "#8a8a5c", p.amb]} />
       <directionalLight
         name="sun"
         intensity={p.sun}
