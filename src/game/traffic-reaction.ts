@@ -7,6 +7,8 @@ export type BlockedCar = ReactingCar & { v: number };
 export const CRASH_CHANCE = 0.12;
 export const ACCELERATE_CHANCE = 0.58;
 export const BRAKE_CHANCE = 0.3;
+/** While a car is still in the way, blare again this often instead of a single polite toot. */
+export const SIGNAL_GAP = 0.8;
 
 export function chooseTrafficReaction(random: number): TrafficReaction {
   return random < CRASH_CHANCE ? "crash" : random < CRASH_CHANCE + ACCELERATE_CHANCE ? "accelerate" : "brake";
@@ -22,7 +24,7 @@ export function threatenedTraffic(playerS: number, car: ReactingCar) {
 }
 /** A car directly ahead in our lane that we are closing on fast enough to need to slow down. */
 export function mustSlowFor(playerS: number, playerLane: number, playerSpeed: number, car: BlockedCar) {
-  if (car.crashAge >= 0 || (car.reactionLeft ?? 0) > 0) return false;
+  if (car.crashAge >= 0) return false;
   const ahead = car.s - playerS;
   if (ahead <= 2 || ahead > 45) return false;
   if (Math.abs(car.lane - playerLane) > LANE * 0.7) return false;
