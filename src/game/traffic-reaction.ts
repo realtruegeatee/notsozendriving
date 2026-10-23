@@ -18,6 +18,10 @@ export function reactionSpeed(base: number, reaction: TrafficReaction | null) {
   if (reaction === "brake") return Math.max(2, base * 0.2);
   return reaction === "crash" ? 0 : base;
 }
+/** A crashing car always rolls to a stop, even when its reaction flag was cleared (e.g. run-off victims). */
+export function npcTargetSpeed(base: number, reaction: TrafficReaction | null, crashing: boolean) {
+  return crashing ? 0 : reactionSpeed(base, reaction);
+}
 export function threatenedTraffic(playerS: number, car: ReactingCar) {
   const ahead = car.s - playerS;
   return car.crashAge < 0 && (car.reactionLeft ?? 0) <= 0 && ahead > 4 && ahead < 55;

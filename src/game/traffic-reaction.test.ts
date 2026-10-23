@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { LANE, ROAD_HALF } from "./road";
-import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, pickRunoffVictim, reactionSpeed, roadsideCrash, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
+import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, npcTargetSpeed, pickRunoffVictim, reactionSpeed, roadsideCrash, shouldAutopilotSignal, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 
 const car = { s: 30, lane: LANE, crashAge: -1, v: 10 };
 it("NPC reactions include a chance to crash, accelerate, or brake", () => {
@@ -22,6 +22,10 @@ it("accelerating NPCs speed up and braking NPCs slow down", () => {
   expect(reactionSpeed(16, "brake")).toBeLessThan(16);
   expect(reactionSpeed(16, "crash")).toBe(0);
   expect(reactionSpeed(16, null)).toBe(16);
+  // A crashing car rolls to a stop even when its reaction flag was cleared (run-off victims).
+  expect(npcTargetSpeed(16, null, true)).toBe(0);
+  expect(npcTargetSpeed(16, "accelerate", true)).toBe(0);
+  expect(npcTargetSpeed(16, null, false)).toBe(16);
 });
 it("an NPC can finish its reaction before responding again", () => {
   expect(threatenedTraffic(0, { ...car, reactionLeft: 4 })).toBe(false);
