@@ -1,7 +1,9 @@
 import { expect, it } from "vitest";
 import { planAutodrive, RIGHT_PASS, RIGHT_PASS_WAIT } from "./autodrive";
 import { LANE } from "./road";
-import { maxSpeedForDistance } from "./speed";
+import { maxSpeedForDistance, powerCurve } from "./speed";
+import { FEEL } from "./store";
+import type { Passing } from "./autodrive";
 
 it("aggressive autodrive overtakes slow traffic in a clear opposite lane", () => {
   const result = planAutodrive(0, 25, false, [{ z: -35, lane: LANE, speed: 15, same: true }]);
@@ -121,4 +123,41 @@ it("still brakes early for a stopped car when aiming for 200 km/h", () => {
     { z: -32, lane: RIGHT_PASS, speed: 0, same: true },
   ], 0, 0, LANE, maxSpeedForDistance(5000));
   expect(r.targetSpeed).toBeLessThanOrEqual(Math.sqrt(2 * 7 * 23) + 0.01);
+});
+it("holds the unlocked 200 km/h ceiling without rear-ending slower traffic", () => {
+  const dt = 1 / 60;
+  const maxV = maxSpeedForDistance(5000);
+  const traffic = [
+    { z: -340, lane: LANE, speed: 19, same: true },
+    { z: -700, lane: LANE, speed: 17, same: true },
+    { z: -1000, lane: LANE, speed: 21, same: true },
+    { z: -1400, lane: LANE, speed: 18, same: true },
+    { z: -620, lane: -LANE, speed: 20, same: false },
+    { z: -1150, lane: -LANE, speed: 22, same: false },
+    { z: -1600, lane: -LANE, speed: 19, same: false },
+  ];
+  let z = 0, speed = 20, distance = 5000, blockedFor = 0;
+  let passing: Passing = false;
+  let closest = Infinity;
+  for (let i = 0; i < 60 * 45; i++) {
+    const lane = passing === "right" ? RIGHT_PASS : passing ? -LANE : LANE;
+    const plan = planAutodrive(z, speed, passing, traffic, blockedFor, dt, lane, maxV);
+    passing = plan.passing; blockedFor = plan.blockedFor;
+    const thr = Math.max(0, Math.min(1, (plan.targetSpeed - speed) * 0.45));
+    const brk = Math.max(0, Math.min(1, (speed - plan.targetSpeed) * 0.5));
+    speed += FEEL.ACCEL * thr * powerCurve(speed, maxV) * dt;
+    speed -= FEEL.BRAKE * brk * dt;
+    speed *= Math.exp(-FEEL.DRAG * dt);
+    speed = Math.max(0, Math.min(maxV, speed));
+    z -= speed * dt; distance += speed * dt;
+    for (const c of traffic) c.z += (c.same ? -1 : 1) * c.speed * dt;
+    for (const c of traffic) {
+      if (!c.same || Math.abs(c.lane - plan.lane) > 2) continue;
+      const gap = z - c.z;
+      if (gap > 0 && gap < 60) closest = Math.min(closest, gap);
+    }
+  }
+  expect(distance).toBeGreaterThan(5000);
+  expect(speed * 3.6).toBeGreaterThanOrEqual(190);
+  expect(closest).toBeGreaterThan(5);
 });
