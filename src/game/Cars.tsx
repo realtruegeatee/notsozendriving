@@ -127,7 +127,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
   const wheels = useRef<THREE.Object3D[]>([]);
   const spot = useRef<THREE.SpotLight>(null);
   const spotTarget = useMemo(() => new THREE.Object3D(), []);
-  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, signalCooldown: 0 });
+  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0 });
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
 
   useFrame((state, raw) => {
@@ -149,6 +149,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           Object.assign(game, pose);
           game.speed = 0; game.shake = 0; game.warp++;
           S.camYaw = game.yaw; S.camY = game.y + 3.4; S.steer = 0; S.roll = 0;
+          S.passing = false; S.blockedFor = 0;
           input.steer = 0;
         }
       }
@@ -172,14 +173,15 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       if (auto) {
         const cars = npcs.map((n) => ({ z: -n.s, lane: npcOffset(n), speed: n.v, same: n.lane > 0 }));
         for (const peer of net.positions.values()) if (now - peer.at < STALE_MS) cars.push({ z: peer.z, lane: peer.x - roadX(peer.z), speed: 20, same: Math.abs(peer.yaw - game.yaw) < Math.PI / 2 });
-        const plan = planAutodrive(game.z, game.speed, S.passing, cars);
+        const plan = planAutodrive(game.z, game.speed, S.passing, cars, S.blockedFor, dt);
         S.passing = plan.passing;
+        S.blockedFor = plan.blockedFor;
         const lookZ = game.z - Math.max(12, game.speed * 0.6);
         const desired = Math.atan2(game.x - roadX(lookZ) - plan.lane, game.z - lookZ);
         steerIn = clamp((game.yaw - desired) * 5, -1, 1);
         thr = clamp((plan.targetSpeed - game.speed) * 0.45, 0, 1);
         brk = clamp((game.speed - plan.targetSpeed) * 0.2, 0, 1);
-      } else S.passing = false;
+      } else { S.passing = false; S.blockedFor = 0; }
       S.steer += (steerIn - S.steer) * damp(7, dt);
 
       let v = game.speed;
