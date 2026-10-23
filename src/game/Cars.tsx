@@ -10,6 +10,7 @@ import { planAutodrive } from "./autodrive";
 import { flashLights, horn } from "./signals";
 import { chooseTrafficReaction, reactionSpeed, roadsideCrash, shouldAutopilotSignal, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
+import { npcOffset, resolveNpcCollision } from "./npc-collision";
 
 const MODELS = ["sedan", "suv", "hatchback-sports", "taxi", "van", "truck", "sedan-sports"].map((m) => `/models/${m}.glb`);
 MODELS.forEach((m) => useGLTF.preload(m));
@@ -64,7 +65,7 @@ export function CarModel({ url, wheels, driverId }: { url: string; wheels?: Reac
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number };
+type Npc = { s: number; lane: number; v: number; base: number; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number };
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
   const npcs = useMemo<Npc[]>(() => {
@@ -73,7 +74,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     for (let i = 0; i < 10; i++) {
       const same = i < 6;
       const base = same ? 12 + Math.random() * 7 : 17 + Math.random() * 6;
-      arr.push({ s: 40 + i * 55 + Math.random() * 30, lane: same ? LANE : -LANE, v: base, base, crashAge: -1, reaction: null, reactionLeft: 0, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
+      arr.push({ s: 40 + i * 55 + Math.random() * 30, lane: same ? LANE : -LANE, v: base, base, crashAge: -1, reaction: null, reactionLeft: 0, impactOffset: 0, contactLeft: 0, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
     }
     return arr;
   }, [traffic]);
@@ -177,9 +178,11 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
 
     // NPCs
     const pLat = game.x - roadX(game.z);
-    npcs.forEach((n, i) => {
+    npcs.forEach((n) => {
       const same = n.lane > 0;
       if (active) {
+        n.contactLeft = Math.max(0, n.contactLeft - dt);
+        n.impactOffset *= Math.exp(-0.8 * dt);
         const crashing = n.crashAge >= 0;
         if (crashing) n.crashAge += dt;
         n.reactionLeft = Math.max(0, n.reactionLeft - dt);
@@ -200,9 +203,10 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           n.v = n.base;
           n.crashAge = -1;
           n.reaction = null; n.reactionLeft = 0;
+          n.impactOffset = 0; n.contactLeft = 0;
         }
         // gentle bump
-        const offset = n.crashAge < 0 ? n.lane : roadsideCrash(n.crashAge, n.lane).offset;
+        const offset = npcOffset(n);
         if (Math.abs(n.s - ps) < CAR_LEN && Math.abs(pLat - offset) < 1.9) {
           game.speed *= same ? 0.6 : 0.3;
           if (n.s > ps) game.z = -(n.s - CAR_LEN);
@@ -210,11 +214,20 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           game.shake = 0.5;
         }
       }
+    });
+    if (active) {
+      for (let i = 0; i < npcs.length; i++) for (let j = i + 1; j < npcs.length; j++) {
+        const a = npcs[i], b = npcs[j];
+        if (a && b) resolveNpcCollision(a, b);
+      }
+    }
+    npcs.forEach((n, i) => {
+      const same = n.lane > 0;
       const g = refs.current[i];
       if (g) {
         const z = -n.s;
         const crash = n.crashAge < 0 ? null : roadsideCrash(n.crashAge, n.lane);
-        const offset = crash?.offset ?? n.lane;
+        const offset = npcOffset(n);
         g.position.set(roadX(z) + offset, (crash ? groundY(z, offset) + 0.03 : roadY(z)) + (crash?.bounce ?? 0), z);
         g.rotation.set(Math.atan(-roadYd(z)) * (same ? 1 : -1), Math.atan(roadXd(z)) + (same ? 0 : Math.PI) + (crash?.yaw ?? 0), crash?.roll ?? 0, "YXZ");
         g.userData["reaction"] = n.reaction;

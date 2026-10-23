@@ -15,4 +15,5 @@
 - Radio lives in src/game/radio.ts: built-in stations are generated with Web Audio, live stations are external streams. Why: built-in stations must work offline.
 - Autodrive lane decisions use pure road-relative math in src/game/autodrive.ts and feed the existing steering model; manual input overrides it. Why: retains driving feel while making overtaking independently testable.
 - NPC signal reactions use pure helpers in src/game/traffic-reaction.ts and mutable, delta-timed crash progress in the driving loop; wrecks recycle only outside view. Why: testable roadside skids without changing player physics or adding network traffic.
+- NPC pairs resolve oriented-footprint contact through src/game/npc-collision.ts after movement and before rendering. Why: symmetric separation and speed loss prevent traffic passing through itself during reactions.
 - Horn audio is gesture-initialized Web Audio in src/game/signals.ts; horn and headlight flashes use discrete room broadcasts. Why: offline sounds and instant social signals without extra per-frame messages.
