@@ -1,5 +1,7 @@
 # Roadmap
 - [ ] Make autopilot passing more decisive with predictive traffic and gap awareness; verify gameplay
+- [ ] Pass stopped oncoming cars instead of getting confused
+- [ ] NPC collisions: only one car crashes and stops; the other recovers and continues
 - [x] Make NPCs swerve after autopilot rear-to-front bumper contact and verify the collision
 - [x] Improve NPC avoidance swerves with steering-led motion and restrained body movement
 - [x] Make NPCs prefer overtaking and carry higher speed through passes
