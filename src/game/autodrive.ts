@@ -30,8 +30,11 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   }
   // Reckless but never parked: it always keeps creeping so it cannot get stuck.
   const CREEP = 3;
+  // Speed from which we can still brake to the car's speed before reaching a safe gap; creep only with room.
+  const follow = (carSpeed: number, gap: number, keep: number) =>
+    Math.max(gap > keep + 3 ? CREEP : 0, Math.min(carSpeed + (gap - keep) * 0.7, Math.sqrt(carSpeed * carSpeed + 2 * 7 * Math.max(0, gap - keep))));
   let targetSpeed = 34;
-  if (!next && blocker) targetSpeed = Math.min(targetSpeed, Math.max(CREEP, blocker.speed + (z - blocker.z - 9) * 0.65));
+  if (!next && blocker) targetSpeed = Math.min(targetSpeed, follow(blocker.speed, z - blocker.z, 9));
   if (passing === true && !next && ahead.length > 0) targetSpeed = Math.min(targetSpeed, 16);
   const lane = next === "right" ? RIGHT_PASS : next ? -LANE : LANE;
   // Brake for hazards in the destination lane and close hazards along the lane-change path.
@@ -40,8 +43,8 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
     const inTarget = Math.abs(c.lane - lane) < 2.2;
     const inPath = c.lane > Math.min(currentLane, lane) - 1.9 && c.lane < Math.max(currentLane, lane) + 1.9;
     if (gap < 0 || !(inTarget || (inPath && gap < 10))) continue;
-    if (c.same) targetSpeed = Math.min(targetSpeed, Math.max(CREEP, c.speed + (gap - 6) * 0.7));
-    else if (gap < Math.max(18, (speed + c.speed) * 0.9)) targetSpeed = Math.min(targetSpeed, CREEP);
+    if (c.same) targetSpeed = Math.min(targetSpeed, follow(c.speed, gap, 7));
+    else if (gap < Math.max(18, (speed + c.speed) * 0.9)) targetSpeed = Math.min(targetSpeed, gap < 25 ? 0 : CREEP);
   }
   return { lane, targetSpeed, passing: next, blockedFor: next ? 0 : waited };
 }
