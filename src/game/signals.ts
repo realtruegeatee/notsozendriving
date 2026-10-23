@@ -2,6 +2,9 @@ import { game, net } from "./store";
 
 let context: AudioContext | null = null;
 let lastHorn = -Infinity;
+// Accepted local signals are consumed once by traffic, including manual controls.
+let signalRevision = 0;
+export function trafficSignalRevision() { return signalRevision; }
 export function initSignals() {
   // iOS: play through the ringer/silent switch like a media app.
   const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
@@ -32,8 +35,10 @@ export function playHorn(volume = 1) {
 export function horn() {
   if (!game.started || game.paused || performance.now() - lastHorn < 700) return;
   lastHorn = performance.now(); initSignals(); playHorn(); net.signal?.("horn");
+  signalRevision++;
 }
 export function flashLights() {
   if (!game.started || game.paused || performance.now() < game.flashUntil) return;
   game.flashUntil = performance.now() + 650; net.signal?.("flash");
+  signalRevision++;
 }

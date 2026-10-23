@@ -1,12 +1,12 @@
 import { LANE } from "./road";
 
-export type TrafficReaction = "crash" | "accelerate" | "brake";
+export type TrafficReaction = "crash" | "accelerate" | "brake" | "panic";
 export type ReactingCar = { s: number; lane: number; crashAge: number; reactionLeft?: number };
 export type BlockedCar = ReactingCar & { v: number };
 /** More volatile traffic; speeding away is still the most common response. */
-export const CRASH_CHANCE = 0.12;
-export const ACCELERATE_CHANCE = 0.62;
-export const BRAKE_CHANCE = 0.26;
+export const CRASH_CHANCE = 0.3;
+export const ACCELERATE_CHANCE = 0.7;
+export const BRAKE_CHANCE = 0;
 /** One decision per oncoming encounter, rather than a random roll every frame. */
 export const ONCOMING_SWERVE_CHANCE = 0.55;
 export function shouldSwerveForPass(random: number) {
@@ -32,9 +32,10 @@ export function chooseSporadicEvent(random: number): SporadicEvent {
 }
 
 export function chooseTrafficReaction(random: number): TrafficReaction {
-  return random < CRASH_CHANCE ? "crash" : random < CRASH_CHANCE + ACCELERATE_CHANCE ? "accelerate" : "brake";
+  return random < CRASH_CHANCE ? "crash" : "panic";
 }
 export function reactionSpeed(base: number, reaction: TrafficReaction | null) {
+  if (reaction === "panic") return Math.min(45, base + 20);
   if (reaction === "accelerate") return Math.min(32, base + 12);
   if (reaction === "brake") return Math.max(2, base * 0.2);
   return reaction === "crash" ? 0 : base;
