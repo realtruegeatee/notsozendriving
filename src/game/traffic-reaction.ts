@@ -1,11 +1,12 @@
 import { LANE } from "./road";
+import { createSwerveMotion } from "./crash-physics";
 
 export type TrafficReaction = "crash" | "accelerate" | "brake" | "panic";
 export type ReactingCar = { s: number; lane: number; crashAge: number; reactionLeft?: number };
 export type BlockedCar = ReactingCar & { v: number };
 /** More volatile traffic; speeding away is still the most common response. */
-export const CRASH_CHANCE = 0.3;
-export const ACCELERATE_CHANCE = 0.7;
+export const CRASH_CHANCE = 0.45;
+export const ACCELERATE_CHANCE = 0.55;
 export const BRAKE_CHANCE = 0;
 /** One decision per oncoming encounter, rather than a random roll every frame. */
 export const ONCOMING_SWERVE_CHANCE = 0.55;
@@ -33,6 +34,15 @@ export function chooseSporadicEvent(random: number): SporadicEvent {
 
 export function chooseTrafficReaction(random: number): TrafficReaction {
   return random < CRASH_CHANCE ? "crash" : "panic";
+}
+/** Signal panic breaks traction harder without adding an impact's airborne launch. */
+export function signalLossMotion(offset: number, speed: number, side: number, lateral = 0) {
+  const motion = createSwerveMotion(offset, speed, side, lateral);
+  const direction = Math.sign(side) || 1;
+  motion.lateral += direction * 3;
+  motion.spin *= 3;
+  motion.rollVelocity *= 2;
+  return motion;
 }
 export function reactionSpeed(base: number, reaction: TrafficReaction | null) {
   if (reaction === "panic") return Math.min(45, base + 20);

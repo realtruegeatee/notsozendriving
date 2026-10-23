@@ -1,5 +1,7 @@
 import { expect, it } from "vitest";
 import { LANE } from "./road";
+import { createSwerveMotion } from "./crash-physics";
+import { signalLossMotion } from "./traffic-reaction";
 import { ACCELERATE_CHANCE, BRAKE_CHANCE, chooseSporadicEvent, chooseTrafficReaction, CRASH_CHANCE, mustSlowFor, npcTargetSpeed, ONCOMING_SWERVE_CHANCE, pickRunoffVictim, reactionSpeed, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, SIGNAL_GAP, SPORADIC_INTERVAL, threatenedTraffic } from "./traffic-reaction";
 
 const car = { s: 30, lane: LANE, crashAge: -1, v: 10 };
@@ -11,11 +13,23 @@ it("horns and flashes never make NPCs brake", () => {
 it("signals provoke more roadside panic while fleeing remains most common", () => {
   expect(chooseTrafficReaction(0.06)).toBe("crash");
   expect(chooseTrafficReaction(0.299)).toBe("crash");
-  expect(chooseTrafficReaction(0.3)).toBe("panic");
+   expect(chooseTrafficReaction(0.449)).toBe("crash");
+   expect(chooseTrafficReaction(0.45)).toBe("panic");
   expect(chooseTrafficReaction(0.75)).toBe("panic");
   expect(CRASH_CHANCE).toBeGreaterThan(0.12);
   expect(ACCELERATE_CHANCE).toBeGreaterThan(0.5);
   expect(CRASH_CHANCE + ACCELERATE_CHANCE + BRAKE_CHANCE).toBeCloseTo(1, 10);
+});
+it("signal-induced loss of control has stronger free lateral motion and spin on either side", () => {
+  for (const side of [-1, 1]) {
+    const ordinary = createSwerveMotion(LANE, 25, side);
+    const panic = signalLossMotion(LANE, 25, side);
+    expect(Math.abs(panic.lateral)).toBeGreaterThan(Math.abs(ordinary.lateral));
+    expect(Math.abs(panic.spin)).toBeGreaterThan(Math.abs(ordinary.spin));
+    expect(Math.sign(panic.lateral)).toBe(side);
+    expect(panic.speed).toBe(25);
+    expect(panic.vertical).toBe(0);
+  }
 });
 it("panicking cars accelerate harder than ordinary bursts without removing spontaneous braking", () => {
   expect(reactionSpeed(16, "panic")).toBeGreaterThan(reactionSpeed(16, "accelerate"));

@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Increase signal-induced loss of control frequency and free sideways/spin impulses
 - [x] Remove signal-induced NPC braking and strengthen panic for manual and autopilot horn/flashes
 - [x] Make autopilot passing more decisive with predictive traffic and gap awareness; verify gameplay
 - [x] Pass stopped oncoming cars instead of getting confused
