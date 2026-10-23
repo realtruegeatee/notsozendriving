@@ -334,7 +334,12 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           if (!wasCrashing && n.crashAge >= 0) {
             n.reaction = "crash"; n.reactionLeft = 7; n.passing = false;
           }
-          game.speed *= n.lane > 0 ? 0.6 : 0.3;
+          if (n.lane > 0 && game.speed > n.v) {
+            // Push it: hand momentum to the car ahead instead of just stopping dead.
+            const share = (game.speed - n.v) * 0.6;
+            n.v += share; n.s += Math.min(1.5, share * 0.08);
+            game.speed -= share * 0.5;
+          } else game.speed *= n.lane > 0 ? 0.85 : 0.3;
           game.x += push.x; game.z += push.z;
           game.shake = 0.5;
         }
@@ -374,11 +379,17 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     game.shake *= Math.exp(-4 * dt);
     const sh = game.shake * (Math.random() - 0.5);
     if (fp) {
-      const eye = game.y + 1.15 + Math.sin(game.distance * 0.9) * 0.008 * Math.min(1, game.speed / 10);
+      // Driver's-eye view: seated left of centre, steady head, gentle look into corners.
+      const eye = game.y + 1.05 + Math.sin(game.distance * 0.9) * 0.004 * Math.min(1, game.speed / 10);
       S.camY = eye;
-      camera.position.set(game.x - Math.sin(game.yaw) * 0.3 + sh * 0.3, eye + sh * 0.3, game.z - Math.cos(game.yaw) * 0.3);
-      camera.lookAt(game.x - Math.sin(S.camYaw) * 20, roadY(game.z - Math.cos(game.yaw) * 20) + 1.0, game.z - Math.cos(S.camYaw) * 20);
-      camera.rotateZ(-S.roll * 0.6);
+      const side = -0.35, fwd = -0.1;
+      const cx = game.x + Math.cos(game.yaw) * side - Math.sin(game.yaw) * -fwd;
+      const cz = game.z - Math.sin(game.yaw) * side - Math.cos(game.yaw) * -fwd;
+      camera.position.set(cx + sh * 0.15, eye + sh * 0.15, cz);
+      const look = 30 + game.speed * 0.4;
+      const lookYaw = S.camYaw + S.steer * 0.12;
+      camera.lookAt(cx - Math.sin(lookYaw) * look, roadY(game.z - Math.cos(game.yaw) * look) + 0.9, cz - Math.cos(lookYaw) * look);
+      camera.rotateZ(-S.roll * 0.3);
     } else {
       const dist = 8.5 + game.speed * 0.05;
       S.camY += (game.y + 3.4 - S.camY) * damp(4, dt);
