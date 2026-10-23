@@ -1,4 +1,7 @@
 # Roadmap
+- [x] Make autopilot passing more decisive with predictive traffic and gap awareness; verify gameplay
+- [x] Pass stopped oncoming cars instead of getting confused
+- [x] NPC collisions: only one car crashes and stops; the other recovers and continues
 - [x] Make NPCs swerve after autopilot rear-to-front bumper contact and verify the collision
 - [x] Improve NPC avoidance swerves with steering-led motion and restrained body movement
 - [x] Make NPCs prefer overtaking and carry higher speed through passes
@@ -29,7 +32,7 @@
 - [x] Fix NPC passing safety and smooth pull-out/return animation
 - [x] Verify complete NPC passes in both directions and game rendering
 - [x] Autopilot finds more gaps; biomes with lakes, mountains, forest, desert
-- [x] Head-on NPC crashes: both cars swerve off in different directions
+- [x] Head-on NPC crashes: one wreck, one recovering driver (replaces the earlier two-wreck behavior)
 - [x] Fix NPCs freezing mid-pass in the oncoming lane
 - [x] Autopilot brakes earlier and stops short of cars instead of bumping
 - [x] Raise the top speed to 200 km/h once 5.0 km is driven
