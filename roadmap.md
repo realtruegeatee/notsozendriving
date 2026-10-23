@@ -1,4 +1,4 @@
 # Roadmap
-- [ ] Multiplayer: public road + private room codes, nickname only (Lovable Cloud realtime)
-- [ ] Radio: built-in offline stations + live internet stations
-- [ ] First-person camera view toggle
+- [x] Multiplayer: public road + private room codes, nickname only (Lovable Cloud realtime)
+- [x] Radio: built-in offline stations + live internet stations
+- [x] First-person camera view toggle
