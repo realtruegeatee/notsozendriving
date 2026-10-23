@@ -16,8 +16,12 @@ function pose(car: CollisionNpc) {
   const z = -car.s, offset = npcOffset(car);
   return { x: roadX(z) + offset, y: groundY(z, offset) + 0.03, z, yaw: Math.atan(roadXd(z)) + (car.lane > 0 ? 0 : Math.PI) + (car.crashAge < 0 ? 0 : npcCrash(car).yaw * Math.sign(car.lane)) };
 }
+/** Relative impact speed between the player and this car, in m/s. */
+export function impactSpeed(playerSpeed: number, car: CollisionNpc) {
+  return car.lane > 0 ? Math.max(0, playerSpeed - car.v) : playerSpeed + car.v;
+}
 /** Only real rear-to-front contact with an active autopilot triggers this avoidance exit. */
-export function resolveAutopilotNpcContact(player: Pose, autopilot: boolean, car: CollisionNpc, lateral = 0) {
+export function resolveAutopilotNpcContact(player: Pose, autopilot: boolean, car: CollisionNpc, lateral = 0, playerSpeed = 0) {
   const npcPose = pose(car);
   const push = carContact(player, npcPose);
   if (!push) return null;
