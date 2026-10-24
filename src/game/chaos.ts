@@ -51,7 +51,7 @@ export function dodgeEvent(events: readonly RoadEvent[], s: number, offset: numb
   for (const e of events) {
     if (e.hit) continue;
     const gap = e.s - s;
-    if (gap < 0 || gap > Math.max(30, v * 1.6)) continue;
+    if (gap < 0 || gap > Math.max(45, v * 2.5)) continue;
     if (Math.abs(offset - e.offset) > e.radius + 2.2) continue;
     if (!best || e.s < best.s) best = e;
   }
