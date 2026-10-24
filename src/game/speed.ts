@@ -13,8 +13,9 @@ export const BASE_MAX_MS = FEEL.MAX;
 // later the power tapers — the normal ceiling keeps its original linear curve.
 const TAPER_PER_MS = 4.2;
 
-/** Top speed in m/s for a given distance driven along the road. */
-export function maxSpeedForDistance(distance: number): number {
+/** Top speed in m/s for a given distance driven along the road. Mayhem opens the 300 km/h ceiling from the start. */
+export function maxSpeedForDistance(distance: number, mayhem = false): number {
+  if (mayhem) return SECOND_MAX_KMH / KMH_PER_MS;
   if (distance >= SECOND_UNLOCK_KM * 1000) return SECOND_MAX_KMH / KMH_PER_MS;
   return distance >= SPEED_UNLOCK_KM * 1000 ? UNLOCKED_MAX_KMH / KMH_PER_MS : BASE_MAX_MS;
 }
