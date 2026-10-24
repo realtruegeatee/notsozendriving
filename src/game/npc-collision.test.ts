@@ -201,7 +201,10 @@ it("crashes only start within the player's visible band", () => {
   expect(crashVisible(50, car)).toBe(true);   // 50 m ahead
   expect(crashVisible(50, npc(40, 20))).toBe(true);  // just behind
   expect(crashVisible(50, npc(20, 20))).toBe(false); // too far behind
-  expect(crashVisible(50, npc(400, 20))).toBe(false); // too far ahead
+  // The band is tight: wrecks start close enough to watch clearly.
+  expect(crashVisible(50, npc(189, 20))).toBe(true);  // 139 m ahead, still in
+  expect(crashVisible(50, npc(191, 20))).toBe(false); // 141 m ahead, out
+  expect(crashVisible(50, npc(400, 20))).toBe(false); // far ahead
   expect(car.crashAge).toBe(-1);
 });
 it("NPC collisions out of sight separate and slow but never wreck", () => {

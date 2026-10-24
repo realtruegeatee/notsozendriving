@@ -46,6 +46,12 @@ it("stronger crashes impart more sideways momentum and spin", () => {
   expect(hard.lateral).toBeGreaterThan(soft.lateral);
   expect(Math.abs(hard.spin)).toBeGreaterThan(Math.abs(soft.spin));
 });
+it("ordinary impacts already look violent: big skids, wild spin and a real launch", () => {
+  const state = createCrashMotion(LANE, 20, 1, 1);
+  expect(Math.abs(state.lateral)).toBeGreaterThan(5);
+  expect(Math.abs(state.spin)).toBeGreaterThan(2.5);
+  expect(state.vertical).toBeGreaterThan(5);
+});
 it("crashes can skid toward either roadside", () => {
   for (const side of [-1, 1]) {
     const state = createCrashMotion(LANE, 20, side, 1);

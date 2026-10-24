@@ -11,9 +11,10 @@ export function createSwerveMotion(offset: number, speed: number, side: number, 
 export function createCrashMotion(offset: number, speed: number, side: number, severity = 0): CrashMotion {
   const strength = Math.max(0, Math.min(2, severity));
   const direction = Math.sign(side) || 1;
-  return { offset, lateral: direction * (2 + Math.min(3, speed * 0.1) + strength * 3), speed,
-    yaw: 0, spin: -direction * (1.1 + strength * 1.4), roll: 0, rollVelocity: direction * (1 + strength * 1.4),
-    bounce: 0, vertical: 2.4 + strength * 2.4, side: direction, restRoll: direction * 0.13 };
+  // Impacts should look violent: a huge sideways kick, a vicious spin, a big airborne hop.
+  return { offset, lateral: direction * (1.5 + Math.min(3, speed * 0.09) + strength * 4), speed,
+    yaw: 0, spin: -direction * (0.8 + strength * 2.2), roll: 0, rollVelocity: direction * (1.2 + strength * 2.2),
+    bounce: 0, vertical: 2.6 + strength * 3, side: direction, restRoll: direction * 0.13 };
 }
 const reduce = (v: number, amount: number) => Math.sign(v) * Math.max(0, Math.abs(v) - amount);
 /** A wreck that stopped moving but ended up still on the road can drive again. */

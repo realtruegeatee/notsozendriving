@@ -20,10 +20,10 @@ function pose(car: CollisionNpc) {
 export function impactSpeed(playerSpeed: number, car: CollisionNpc) {
   return car.lane > 0 ? Math.max(0, playerSpeed - car.v) : playerSpeed + car.v;
 }
-/** A crash may only start where the player can actually see it: just behind the car to ~260 m ahead. */
+/** A crash may only start where the player can actually see it: just behind the car to ~140 m ahead. */
 export function crashVisible(playerS: number, car: CollisionNpc) {
   const ds = car.s - playerS;
-  return ds > -15 && ds < 260;
+  return ds > -15 && ds < 140;
 }
 /** Only real rear-to-front contact with an active autopilot triggers this avoidance exit. */
 export function resolveAutopilotNpcContact(player: Pose, autopilot: boolean, car: CollisionNpc, lateral = 0, playerSpeed = 0) {
