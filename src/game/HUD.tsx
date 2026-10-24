@@ -1,4 +1,6 @@
 import { AGGRESSION, type Aggression } from "./aggression";
+import { CHAOS } from "./chaos";
+import type { Chaos } from "./chaos";
 import { useEffect, useRef, useState } from "react";
 import { Eye, Moon, Pause, Play, Sun, Gauge, Megaphone, Lamp, MonitorDown } from "lucide-react";
 import windowsAsset from "../assets/zen-drive-windows.asset.json";
@@ -125,6 +127,26 @@ function AggroPicker() {
       <div className="zen-seg">
         {AGGRESSION.map((a) => (
           <button key={a.id} data-on={aggro === a.id} onClick={() => pick(a.id)}>{a.label}</button>
+        ))}
+      </div>
+      <ChaosPicker />
+    </>
+  );
+}
+
+function ChaosPicker() {
+  const [chaos, setChaos] = useState<Chaos>("normal");
+  useEffect(() => {
+    const saved = localStorage.getItem("zen-chaos") as Chaos | null;
+    if (saved && CHAOS.some((c) => c.id === saved)) { setChaos(saved); game.chaos = saved; }
+  }, []);
+  const pick = (c: Chaos) => { setChaos(c); game.chaos = c; localStorage.setItem("zen-chaos", c); };
+  return (
+    <>
+      <p className="zen-label">Chaos</p>
+      <div className="zen-seg">
+        {CHAOS.map((c) => (
+          <button key={c.id} data-on={chaos === c.id} onClick={() => pick(c.id)}>{c.label}</button>
         ))}
       </div>
     </>

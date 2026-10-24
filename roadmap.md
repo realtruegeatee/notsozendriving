@@ -50,3 +50,5 @@
 - [x] AI aggressiveness selector
 - [x] Fix radio on the website
 - [x] Autopilot rear-hit car stops, gets shoved aside, resumes after 3 s
+
+- [x] Chaos level: pileups, road rage, oil/rocks, wrong-way drivers

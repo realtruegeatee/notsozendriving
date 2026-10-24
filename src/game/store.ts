@@ -17,6 +17,7 @@ export const game = {
   flashUntil: 0,
   view: "chase" as "chase" | "cockpit",
   aggro: "reckless" as import("./aggression").Aggression,
+  chaos: "normal" as import("./chaos").Chaos,
 };
 
 // Multiplayer connection info shown in the HUD.
