@@ -54,11 +54,14 @@ export function resolveAutopilotNpcContact(player: Pose, autopilot: boolean, car
   } else if (car.crashAge < 0 && car.contactLeft <= 0) {
     // A hard hit from the player launches the car like NPC-on-NPC impacts do:
     // it tumbles away comically instead of just slowing the player down.
-    const speed = impactSpeed(playerSpeed, car);
+    // A car passing us is often faster, so the along-road closing speed is zero
+    // even when the player plows into its side. Count side impacts at full speed.
+    const lat = dx * Math.cos(player.yaw) - dz * Math.sin(player.yaw);
+    const sideImpact = !aligned || Math.abs(lat) > 1.2;
+    const speed = Math.max(impactSpeed(playerSpeed, car), sideImpact ? playerSpeed : 0);
     if (playerSpeed > 9 && speed > 9) {
       const severity = Math.min(2, Math.max(0.6, speed / 14));
       const offset = npcOffset(car);
-      const lat = dx * Math.cos(player.yaw) - dz * Math.sin(player.yaw);
       car.crashOrigin = offset;
       car.crashSide = Math.abs(lat) > 0.05 ? Math.sign(lat) : Math.sign(offset) || Math.sign(car.lane) || 1;
       car.impactOffset = 0;
