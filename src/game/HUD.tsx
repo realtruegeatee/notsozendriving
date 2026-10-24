@@ -1,4 +1,6 @@
 import { AGGRESSION, type Aggression } from "./aggression";
+import { CHAOS } from "./chaos";
+import type { Chaos } from "./chaos";
 import { useEffect, useRef, useState } from "react";
 import { Eye, Moon, Pause, Play, Sun, Gauge, Megaphone, Lamp, MonitorDown } from "lucide-react";
 import windowsAsset from "../assets/zen-drive-windows.asset.json";
