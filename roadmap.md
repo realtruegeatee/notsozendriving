@@ -1,4 +1,7 @@
 # Roadmap
+- [x] More NPC cars on the road (16, tighter spacing)
+- [x] Crash start distance pulled closer to the player (140 m band)
+- [x] More violent-looking crashes: bigger skids, spin and airtime
 - [x] Increase signal-induced loss of control frequency and free sideways/spin impulses
 - [x] Remove signal-induced NPC braking and strengthen panic for manual and autopilot horn/flashes
 - [x] Make autopilot passing more decisive with predictive traffic and gap awareness; verify gameplay
