@@ -20,7 +20,7 @@ import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import type { DrivingNpc } from "./npc-driving";
 import { createCrashMotion, createSwerveMotion, stepCrashMotion } from "./crash-physics";
 import type { CrashMotion } from "./crash-physics";
-import { chaosProfile, hitsEvent, rageSpeed, stepRage, stepRoadEvents } from "./chaos";
+import { chaosProfile, dodgeEvent, hitsEvent, rageSpeed, stepRage, stepRoadEvents } from "./chaos";
 import type { RoadEvent } from "./chaos";
 
 const rageMat = new THREE.MeshStandardMaterial({ color: "#ff2020", emissive: "#ff0000", emissiveIntensity: 4, toneMapped: false });
@@ -119,7 +119,7 @@ function GltfCar({ url, wheels, driverId }: CarModelProps) {
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; stunLeft?: number; wander?: number; wanderLeft?: number; restFor?: number; rageLeft?: number; rageHonk?: number; wrongWay?: boolean };
+type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; skilled?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; stunLeft?: number; wander?: number; wanderLeft?: number; restFor?: number; rageLeft?: number; rageHonk?: number; wrongWay?: boolean };
 const EVENT_POOL = 6;
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
@@ -130,7 +130,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       const same = i < 10;
       const aggressive = i % 3 !== 0;
       const base = npcCruisingSpeed(same, aggressive, Math.random());
-      arr.push({ s: 40 + i * 40 + Math.random() * 26, lane: same ? LANE : -LANE, v: base, base, aggressive, crashAge: -1, reaction: null, reactionLeft: 0, impactOffset: 0, contactLeft: 0, passOffset: 0, passing: false, shove: 0, laneVelocity: 0, laneRoll: 0, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
+      arr.push({ s: 40 + i * 40 + Math.random() * 26, lane: same ? LANE : -LANE, v: base, base, aggressive, skilled: Math.random() < 0.45, crashAge: -1, reaction: null, reactionLeft: 0, impactOffset: 0, contactLeft: 0, passOffset: 0, passing: false, shove: 0, laneVelocity: 0, laneRoll: 0, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
     }
     return arr;
   }, [traffic]);
@@ -205,7 +205,9 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         S.passing = plan.passing;
         S.blockedFor = plan.blockedFor;
         const lookZ = game.z - Math.max(12, game.speed * 0.6);
-        const desired = Math.atan2(game.x - roadX(lookZ) - plan.lane, game.z - lookZ);
+        // The autopilot spots oil and rocks early and steers around them at speed.
+        const dodge = dodgeEvent(events.current, -game.z, game.x - roadX(game.z), game.speed);
+        const desired = Math.atan2(game.x - roadX(lookZ) - (dodge !== null ? dodge : plan.lane), game.z - lookZ);
         steerIn = clamp((game.yaw - desired) * 5, -1, 1);
         thr = clamp((plan.targetSpeed - game.speed) * 0.45, 0, 1);
         brk = clamp((game.speed - plan.targetSpeed) * 0.5, 0, 1);
@@ -336,7 +338,9 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           if (!plan) return;
           n.passing = plan.passing;
           const previousVelocity = n.laneVelocity;
-          const laneStep = stepNpcLane(n.passOffset, n.laneVelocity, plan.passOffset + (n.wander ?? 0), n.v, dt);
+          // Skilled drivers spot oil and rocks early and steer around them at speed.
+          const dodge = n.skilled && !n.wrongWay && (n.rageLeft ?? 0) <= 0 ? dodgeEvent(events.current, n.s, npcOffset(n), n.v) : null;
+          const laneStep = stepNpcLane(n.passOffset, n.laneVelocity, dodge !== null ? dodge - n.lane : plan.passOffset + (n.wander ?? 0), n.v, dt);
           n.passOffset = laneStep.offset; n.laneVelocity = laneStep.velocity;
           const lean = clamp(-(n.laneVelocity - previousVelocity) / Math.max(dt, 0.001) * Math.sign(n.lane) * 0.012, -0.06, 0.06);
           n.laneRoll += (lean - n.laneRoll) * damp(6, dt);
@@ -403,6 +407,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         if (ds < -50 || ds > 520) {
           n.s = ps + 180 + Math.random() * 320;
           n.base = npcCruisingSpeed(same, n.aggressive ?? false, Math.random());
+          n.skilled = Math.random() < 0.45;
           n.v = n.base;
           n.crashAge = -1;
           delete n.crashMotion; delete n.crashSpeed;

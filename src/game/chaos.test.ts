@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { chaosProfile, hitsEvent, pileupSeverity, RAGE_FOR, stepRage, stepRoadEvents } from "./chaos";
+import { chaosProfile, dodgeEvent, hitsEvent, pileupSeverity, RAGE_FOR, stepRage, stepRoadEvents } from "./chaos";
 import type { RoadEvent } from "./chaos";
 import { resolveNpcCollision } from "./npc-collision";
 import { createCrashMotion } from "./crash-physics";
@@ -43,4 +43,18 @@ it("a flying wreck knocks a driving car into a pileup", () => {
   const w2 = { ...wreck, contactLeft: 0, crashMotion: { ...wreck.crashMotion } };
   resolveNpcCollision(w2, calm, true, chaosProfile("zen"), 0);
   expect(calm.crashAge).toBe(-1);
+});
+it("skilled drivers dodge an event with room to spare, but not when it is too late", () => {
+  const oil: RoadEvent = { kind: "oil", s: 100, offset: 1.8, radius: 2.6 };
+  // Far enough ahead: a clear offset outside the slick, still on the road.
+  const dodge = dodgeEvent([oil], 40, 1.8, 25);
+  expect(dodge).not.toBeNull();
+  expect(Math.abs(dodge! - oil.offset)).toBeGreaterThan(oil.radius);
+  // Too close at speed: no dodge, it will hit.
+  expect(dodgeEvent([oil], 96, 1.8, 30)).toBeNull();
+  // Nothing ahead or already passed: no dodge.
+  expect(dodgeEvent([], 40, 1.8, 25)).toBeNull();
+  expect(dodgeEvent([oil], 120, 1.8, 25)).toBeNull();
+  // A lane already clear of the event needs no dodge.
+  expect(dodgeEvent([oil], 40, -1.8, 25)).toBeNull();
 });
