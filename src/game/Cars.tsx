@@ -20,6 +20,10 @@ import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import type { DrivingNpc } from "./npc-driving";
 import { createCrashMotion, createSwerveMotion, stepCrashMotion } from "./crash-physics";
 import type { CrashMotion } from "./crash-physics";
+import { chaosProfile, hitsEvent, rageSpeed, stepRage, stepRoadEvents } from "./chaos";
+import type { RoadEvent } from "./chaos";
+
+const rageMat = new THREE.MeshStandardMaterial({ color: "#ff2020", emissive: "#ff0000", emissiveIntensity: 4, toneMapped: false });
 
 const MODELS = ["sedan", "suv", "hatchback-sports", "taxi", "van", "truck", "sedan-sports"].map((m) => `/models/${m}.glb`);
 // No useGLTF.preload: a rejected preload is an unhandled error on flaky networks.
@@ -115,7 +119,8 @@ function GltfCar({ url, wheels, driverId }: CarModelProps) {
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; stunLeft?: number; wander?: number; wanderLeft?: number; restFor?: number };
+type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; stunLeft?: number; wander?: number; wanderLeft?: number; restFor?: number; rageLeft?: number; rageHonk?: number; wrongWay?: boolean };
+const EVENT_POOL = 6;
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
   const npcs = useMemo<Npc[]>(() => {
@@ -135,7 +140,10 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
   const wheels = useRef<THREE.Object3D[]>([]);
   const spot = useRef<THREE.SpotLight>(null);
   const spotTarget = useMemo(() => new THREE.Object3D(), []);
-  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, signalRevision: trafficSignalRevision(), stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false, backingOff: false });
+  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, signalRevision: trafficSignalRevision(), stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false, backingOff: false, eventTimer: 0, wrongTimer: 0, oilSpin: 0 });
+  const events = useRef<RoadEvent[]>([]);
+  const eventRefs = useRef<(THREE.Group | null)[]>([]);
+  const rageRefs = useRef<(THREE.Mesh | null)[]>([]);
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
 
   useFrame((state, raw) => {
@@ -242,6 +250,8 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const desired = roadYaw - clamp((target - lat) * 0.07, -0.22, 0.22);
         game.yaw += (desired - game.yaw) * damp(FEEL.ASSIST * Math.min(1, v / 8), dt);
       }
+      // Oil slick: the car keeps spinning a little until the tyres grip again.
+      game.yaw += S.oilSpin * dt; S.oilSpin *= Math.exp(-2.5 * dt);
       game.yaw = clamp(game.yaw, roadYaw - 0.9, roadYaw + 0.9);
       game.x += -Math.sin(game.yaw) * v * dt;
       game.z += -Math.cos(game.yaw) * v * dt;
@@ -259,6 +269,23 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         if (now >= S.contactUntil) {
           game.speed *= 0.55; game.shake = 0.25; S.contactUntil = now + 400;
         }
+      }
+      // Random road events ahead of the player.
+      const cp = chaosProfile(game.chaos);
+      S.eventTimer = stepRoadEvents(events.current, -game.z, S.eventTimer, dt, cp, Math.random);
+      const myLat = game.x - roadX(game.z);
+      for (const e of events.current) {
+        if (e.hit || !hitsEvent(e, -game.z, myLat)) continue;
+        e.hit = true;
+        if (e.kind === "oil") { S.oilSpin = (Math.random() < 0.5 ? -1 : 1) * 1.2 * cp.power; game.shake = 0.3; }
+        else { game.speed *= 0.5; game.shake = 0.9; }
+      }
+      // Wrong-way driver: a far-ahead oncoming car switches into the player's lane.
+      S.wrongTimer += dt;
+      if (S.wrongTimer > cp.wrongWayGap) {
+        S.wrongTimer = 0;
+        const pick = npcs.find((n) => n.lane < 0 && n.crashAge < 0 && !n.wrongWay && n.s - (-game.z) > 150);
+        if (pick) pick.wrongWay = true;
       }
     }
 
@@ -314,6 +341,35 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           const lean = clamp(-(n.laneVelocity - previousVelocity) / Math.max(dt, 0.001) * Math.sign(n.lane) * 0.012, -0.06, 0.06);
           n.laneRoll += (lean - n.laneRoll) * damp(6, dt);
           target = plan.speed;
+          const cp = chaosProfile(game.chaos);
+          if (n.wrongWay) {
+            // Head-on in the player's lane, honking all the way.
+            n.passOffset += (2 * LANE - n.passOffset) * damp(1.5, dt); n.laneVelocity = 0;
+            target = n.base;
+            n.rageHonk = (n.rageHonk ?? 0) - dt;
+            if (n.rageHonk <= 0 && Math.abs(n.s - ps) < 90) { horn(); n.rageHonk = 1.2; }
+          }
+          if (same) {
+            n.rageLeft = stepRage(n.rageLeft ?? 0, ps - n.s, false, Math.random(), dt, cp);
+            if (n.rageLeft > 0) {
+              // Road rage: chase the player's lane, tailgate and bump.
+              const behind = ps - n.s;
+              target = rageSpeed(game.speed, behind);
+              n.passOffset += (clamp(pLat - n.lane, -2 * LANE, LANE) - n.passOffset) * damp(3, dt);
+              n.passing = false;
+              n.rageHonk = (n.rageHonk ?? 0) - dt;
+              if (n.rageHonk <= 0 && behind > 0 && behind < 40) { horn(); n.rageHonk = 0.7 + Math.random() * 0.6; }
+              if (behind > -2 && behind < 5 && Math.abs(pLat - npcOffset(n)) < 2) { game.speed += 1.5; game.shake = 0.5; n.v *= 0.8; }
+            }
+          }
+          for (const e of events.current) {
+            if (!hitsEvent(e, n.s, npcOffset(n)) || !crashVisible(ps, n)) continue;
+            n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1);
+            n.crashMotion = e.kind === "oil" ? signalLossMotion(n.crashOrigin, n.v, n.crashSide, n.laneVelocity) : createCrashMotion(n.crashOrigin, n.v, n.crashSide, 1.2 * cp.power);
+            if (e.kind === "rock") n.shove = 1.2;
+            n.reaction = "crash"; n.reactionLeft = 7; n.impactOffset = 0; n.crashAge = 0; n.passing = false; n.rageLeft = 0;
+            break;
+          }
           if (!plan.swerve) delete n.dodged;
           if (plan.swerve && n.dodged === undefined) n.dodged = !shouldSwerveForPass(Math.random());
           if (plan.swerve && !n.dodged && crashVisible(ps, n)) { n.reaction = "crash"; n.reactionLeft = 7; n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false; }
@@ -354,6 +410,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           n.impactOffset = 0; n.contactLeft = 0;
           n.recoveryLeft = 0; n.stunLeft = 0;
           n.passOffset = 0; n.passing = false; delete n.crashOrigin; delete n.crashSide; delete n.dodged; n.shove = 0; n.laneVelocity = 0; n.laneRoll = 0; n.wander = 0; n.wanderLeft = 0;
+          n.rageLeft = 0; n.wrongWay = false;
         }
       }
     });
@@ -362,7 +419,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const a = npcs[i], b = npcs[j];
         if (a && b) {
           const aWasWreck = a.crashAge >= 0, bWasWreck = b.crashAge >= 0;
-          resolveNpcCollision(a, b, crashVisible(ps, a) || crashVisible(ps, b));
+          resolveNpcCollision(a, b, crashVisible(ps, a) || crashVisible(ps, b), chaosProfile(game.chaos));
           if ((!aWasWreck && a.shove && a.crashAge >= 0) || (!bWasWreck && b.shove && b.crashAge >= 0)) {
             const aggressor = a.crashAge >= 0 ? b : a;
             aggressor.reaction = null; aggressor.reactionLeft = 0;
@@ -412,7 +469,21 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         g.userData["passing"] = n.passing;
         g.userData["shove"] = n.shove;
       }
+      const rm = rageRefs.current[i];
+      if (rm) rm.visible = (((n.rageLeft ?? 0) > 0 || !!n.wrongWay) && n.crashAge < 0) && Math.floor(now / 180) % 2 === 0;
     });
+    for (let k = 0; k < EVENT_POOL; k++) {
+      const eg = eventRefs.current[k], e = events.current[k];
+      if (!eg) continue;
+      eg.visible = !!e;
+      if (!e) continue;
+      const z = -e.s;
+      eg.position.set(roadX(z) + e.offset, roadY(z), z);
+      const oil = eg.children[0], rock = eg.children[1];
+      if (oil) oil.visible = e.kind === "oil";
+      if (rock) rock.visible = e.kind === "rock";
+    }
+
 
     game.y = roadY(game.z);
     const p = player.current;
@@ -475,6 +546,21 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       {npcs.map((n, i) => (
         <group key={i} name={`traffic-${i}`} ref={(el) => { refs.current[i] = el; }}>
           <CarModel url={n.model} />
+          <mesh ref={(el) => { rageRefs.current[i] = el; }} visible={false} position={[0, 2.1, 0]} material={rageMat}>
+            <boxGeometry args={[1.2, 0.18, 0.4]} />
+          </mesh>
+        </group>
+      ))}
+      {Array.from({ length: EVENT_POOL }, (_, k) => (
+        <group key={`ev-${k}`} visible={false} ref={(el) => { eventRefs.current[k] = el; }}>
+          <mesh rotation-x={-Math.PI / 2} position={[0, 0.04, 0]}>
+            <circleGeometry args={[2.6, 20]} />
+            <meshStandardMaterial color="#14110f" roughness={0.05} metalness={0.6} />
+          </mesh>
+          <mesh position={[0, 0.9, 0]} castShadow>
+            <dodecahedronGeometry args={[1.3, 0]} />
+            <meshStandardMaterial color="#7a7266" roughness={1} flatShading />
+          </mesh>
         </group>
       ))}
     </>
