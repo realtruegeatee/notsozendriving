@@ -43,3 +43,7 @@ test("max speed rises to 300 km/h at 10 km", () => {
   expect(msd(9999) * 3.6).toBeCloseTo(200, 6);
   expect(msd(10000) * 3.6).toBeCloseTo(300, 6);
 });
+test("mayhem opens the 300 km/h ceiling from the start", () => {
+  expect(msd(0, true) * 3.6).toBeCloseTo(300, 6);
+  expect(msd(4999, true) * 3.6).toBeCloseTo(300, 6);
+});

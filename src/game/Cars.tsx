@@ -201,7 +201,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       if (auto) {
         const cars = npcs.map((n) => ({ z: -n.s, lane: npcOffset(n), speed: n.v, same: n.lane > 0, laneVelocity: n.crashAge < 0 ? n.laneVelocity : 0, targetLane: n.crashAge < 0 ? n.passing ? -n.lane : n.lane : npcOffset(n) }));
         for (const peer of net.positions.values()) if (now - peer.at < STALE_MS) cars.push({ z: peer.z, lane: peer.x - roadX(peer.z), speed: 20, same: Math.abs(peer.yaw - game.yaw) < Math.PI / 2, laneVelocity: 0, targetLane: peer.x - roadX(peer.z) });
-        const plan = planAutodrive(game.z, game.speed, S.passing, cars, S.blockedFor, dt, game.x - roadX(game.z), maxSpeedForDistance(game.distance) * prof.speedFactor);
+        const plan = planAutodrive(game.z, game.speed, S.passing, cars, S.blockedFor, dt, game.x - roadX(game.z), maxSpeedForDistance(game.distance, game.chaos === "mayhem") * prof.speedFactor);
         S.passing = plan.passing;
         S.blockedFor = plan.blockedFor;
         const lookZ = game.z - Math.max(12, game.speed * 0.6);
@@ -216,7 +216,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const lat0 = game.x - roadX(game.z);
         const target = ramTarget(game.z, lat0, cars);
         // Only lose patience when no pass is possible.
-        const heldUp = !plan.passing && plan.targetSpeed < Math.min(game.speed + 2, maxSpeedForDistance(game.distance) * 0.7);
+        const heldUp = !plan.passing && plan.targetSpeed < Math.min(game.speed + 2, maxSpeedForDistance(game.distance, game.chaos === "mayhem") * 0.7);
         const imp = stepImpatience(S.impatience, S.ramming && !plan.passing, heldUp, prof.ramming && !!target, dt);
         S.impatience = imp.impatience; S.ramming = imp.ramming;
         if (S.ramming && target) {
@@ -233,7 +233,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       S.steer += (steerIn - S.steer) * damp(7, dt);
 
       let v = game.speed;
-      const maxV = maxSpeedForDistance(game.distance);
+      const maxV = maxSpeedForDistance(game.distance, game.chaos === "mayhem");
       v += FEEL.ACCEL * thr * powerCurve(v, maxV) * dt;
       v -= FEEL.BRAKE * brk * dt;
       v *= Math.exp(-FEEL.DRAG * dt);
