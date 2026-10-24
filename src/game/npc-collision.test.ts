@@ -54,6 +54,16 @@ it("a hard player hit launches the NPC comically instead of just slowing it", ()
   expect(Math.abs(hit.crashMotion?.spin ?? 0)).toBeGreaterThan(1);
   expect(Math.abs(hit.crashMotion?.rollVelocity ?? 0)).toBeGreaterThan(1);
 });
+it("autopilot side-swiping a faster passing car still launches it", () => {
+  // The passer is faster than the player, so along-road closing speed is zero;
+  // the side impact alone must be enough to send it flying.
+  const hit: CollisionNpc = { ...npc(50, 35), impactOffset: 1.5, passing: true };
+  expect(resolveAutopilotNpcContact(playerPose(50), true, hit, 0, 30)).not.toBeNull();
+  expect(hit.crashAge).toBe(0);
+  expect(hit.shove).toBeGreaterThan(0);
+  expect(hit.passing).toBe(false);
+  expect(hit.crashMotion?.vertical).toBeGreaterThan(2);
+});
 it("a gentle player touch does not launch the NPC", () => {
   const hit = npc(52, 20);
   expect(resolveAutopilotNpcContact(playerPose(50), false, hit, 0, 24)).not.toBeNull();
