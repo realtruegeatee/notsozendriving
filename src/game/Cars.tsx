@@ -20,7 +20,7 @@ import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import type { DrivingNpc } from "./npc-driving";
 import { createCrashMotion, createSwerveMotion, stepCrashMotion } from "./crash-physics";
 import type { CrashMotion } from "./crash-physics";
-import { chaosProfile, hitsEvent, rageSpeed, stepRage, stepRoadEvents } from "./chaos";
+import { chaosProfile, dodgeEvent, hitsEvent, rageSpeed, stepRage, stepRoadEvents } from "./chaos";
 import type { RoadEvent } from "./chaos";
 
 const rageMat = new THREE.MeshStandardMaterial({ color: "#ff2020", emissive: "#ff0000", emissiveIntensity: 4, toneMapped: false });
@@ -119,7 +119,7 @@ function GltfCar({ url, wheels, driverId }: CarModelProps) {
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; stunLeft?: number; wander?: number; wanderLeft?: number; restFor?: number; rageLeft?: number; rageHonk?: number; wrongWay?: boolean };
+type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; skilled?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; stunLeft?: number; wander?: number; wanderLeft?: number; restFor?: number; rageLeft?: number; rageHonk?: number; wrongWay?: boolean };
 const EVENT_POOL = 6;
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
@@ -130,7 +130,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       const same = i < 10;
       const aggressive = i % 3 !== 0;
       const base = npcCruisingSpeed(same, aggressive, Math.random());
-      arr.push({ s: 40 + i * 40 + Math.random() * 26, lane: same ? LANE : -LANE, v: base, base, aggressive, crashAge: -1, reaction: null, reactionLeft: 0, impactOffset: 0, contactLeft: 0, passOffset: 0, passing: false, shove: 0, laneVelocity: 0, laneRoll: 0, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
+      arr.push({ s: 40 + i * 40 + Math.random() * 26, lane: same ? LANE : -LANE, v: base, base, aggressive, skilled: Math.random() < 0.45, crashAge: -1, reaction: null, reactionLeft: 0, impactOffset: 0, contactLeft: 0, passOffset: 0, passing: false, shove: 0, laneVelocity: 0, laneRoll: 0, model: MODELS[i % MODELS.length] ?? MODELS[0] ?? "/models/sedan.glb" });
     }
     return arr;
   }, [traffic]);
