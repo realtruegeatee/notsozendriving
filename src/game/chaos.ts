@@ -43,6 +43,29 @@ export function hitsEvent(e: RoadEvent, s: number, offset: number) {
   return Math.abs(s - e.s) < e.radius + 1.6 && Math.abs(offset - e.offset) < e.radius + 0.8;
 }
 
+import { ROAD_HALF } from "./road";
+/** Skilled drivers spot an event early and steer around it at speed.
+ * Returns a safe lateral offset, or null when nothing threatens or it is too late to dodge. */
+export function dodgeEvent(events: readonly RoadEvent[], s: number, offset: number, v: number): number | null {
+  let best: RoadEvent | null = null;
+  for (const e of events) {
+    if (e.hit) continue;
+    const gap = e.s - s;
+    if (gap < 0 || gap > Math.max(30, v * 1.6)) continue;
+    if (Math.abs(offset - e.offset) > e.radius + 2.2) continue;
+    if (!best || e.s < best.s) best = e;
+  }
+  if (!best) return null;
+  const gap = best.s - s;
+  // Too close at this speed: no time to steer clear, so it will hit.
+  if (gap < v * 0.45 + 4) return null;
+  const limit = ROAD_HALF - 0.7;
+  const side = offset >= best.offset ? 1 : -1;
+  let target = best.offset + side * (best.radius + 1.8);
+  if (Math.abs(target) > limit) target = best.offset - side * (best.radius + 1.8);
+  return Math.max(-limit, Math.min(limit, target));
+}
+
 /** A flying wreck may knock a driving car into the pileup, harder when the wreck is fast. */
 export function pileupSeverity(wreckSpeed: number, p: ChaosProfile) {
   return Math.min(2, Math.max(0.6, wreckSpeed / 10) * p.power);
