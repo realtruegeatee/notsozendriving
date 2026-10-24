@@ -52,7 +52,7 @@ export function dodgeEvent(events: readonly RoadEvent[], s: number, offset: numb
     if (e.hit) continue;
     const gap = e.s - s;
     if (gap < 0 || gap > Math.max(45, v * 2.5)) continue;
-    if (Math.abs(offset - e.offset) > e.radius + 2.2) continue;
+    if (Math.abs(offset - e.offset) >= e.radius + 1.0) continue;
     if (!best || e.s < best.s) best = e;
   }
   if (!best) return null;
