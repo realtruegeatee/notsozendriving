@@ -205,7 +205,9 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         S.passing = plan.passing;
         S.blockedFor = plan.blockedFor;
         const lookZ = game.z - Math.max(12, game.speed * 0.6);
-        const desired = Math.atan2(game.x - roadX(lookZ) - plan.lane, game.z - lookZ);
+        // The autopilot spots oil and rocks early and steers around them at speed.
+        const dodge = dodgeEvent(events.current, -game.z, game.x - roadX(game.z), game.speed);
+        const desired = Math.atan2(game.x - roadX(lookZ) - (dodge !== null ? dodge : plan.lane), game.z - lookZ);
         steerIn = clamp((game.yaw - desired) * 5, -1, 1);
         thr = clamp((plan.targetSpeed - game.speed) * 0.45, 0, 1);
         brk = clamp((game.speed - plan.targetSpeed) * 0.5, 0, 1);
@@ -336,7 +338,9 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           if (!plan) return;
           n.passing = plan.passing;
           const previousVelocity = n.laneVelocity;
-          const laneStep = stepNpcLane(n.passOffset, n.laneVelocity, plan.passOffset + (n.wander ?? 0), n.v, dt);
+          // Skilled drivers spot oil and rocks early and steer around them at speed.
+          const dodge = n.skilled && !n.wrongWay && (n.rageLeft ?? 0) <= 0 ? dodgeEvent(events.current, n.s, npcOffset(n), n.v) : null;
+          const laneStep = stepNpcLane(n.passOffset, n.laneVelocity, dodge !== null ? dodge - n.lane : plan.passOffset + (n.wander ?? 0), n.v, dt);
           n.passOffset = laneStep.offset; n.laneVelocity = laneStep.velocity;
           const lean = clamp(-(n.laneVelocity - previousVelocity) / Math.max(dt, 0.001) * Math.sign(n.lane) * 0.012, -0.06, 0.06);
           n.laneRoll += (lean - n.laneRoll) * damp(6, dt);
@@ -403,6 +407,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         if (ds < -50 || ds > 520) {
           n.s = ps + 180 + Math.random() * 320;
           n.base = npcCruisingSpeed(same, n.aggressive ?? false, Math.random());
+          n.skilled = Math.random() < 0.45;
           n.v = n.base;
           n.crashAge = -1;
           delete n.crashMotion; delete n.crashSpeed;
