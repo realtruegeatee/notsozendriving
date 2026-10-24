@@ -127,6 +127,26 @@ function AggroPicker() {
           <button key={a.id} data-on={aggro === a.id} onClick={() => pick(a.id)}>{a.label}</button>
         ))}
       </div>
+      <ChaosPicker />
+    </>
+  );
+}
+
+function ChaosPicker() {
+  const [chaos, setChaos] = useState<Chaos>("normal");
+  useEffect(() => {
+    const saved = localStorage.getItem("zen-chaos") as Chaos | null;
+    if (saved && CHAOS.some((c) => c.id === saved)) { setChaos(saved); game.chaos = saved; }
+  }, []);
+  const pick = (c: Chaos) => { setChaos(c); game.chaos = c; localStorage.setItem("zen-chaos", c); };
+  return (
+    <>
+      <p className="zen-label">Chaos</p>
+      <div className="zen-seg">
+        {CHAOS.map((c) => (
+          <button key={c.id} data-on={chaos === c.id} onClick={() => pick(c.id)}>{c.label}</button>
+        ))}
+      </div>
     </>
   );
 }

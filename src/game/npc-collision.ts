@@ -3,6 +3,8 @@ import { groundY, roadX, roadXd } from "./road";
 import type { CrashMotion } from "./crash-physics";
 import { createCrashMotion, createSwerveMotion } from "./crash-physics";
 import type { Pose } from "./multiplayer-math";
+import { pileupSeverity } from "./chaos";
+import type { ChaosProfile } from "./chaos";
 
 export type CollisionNpc = { s: number; lane: number; v: number; crashAge: number; impactOffset: number; contactLeft: number; passOffset?: number; crashOrigin?: number; shove?: number; crashSide?: number; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; passing?: boolean; stunLeft?: number };
 /** Seconds a car rammed from behind by the autopilot stays stopped before driving again. */
@@ -77,7 +79,7 @@ export function resolveAutopilotNpcContact(player: Pose, autopilot: boolean, car
   return push;
 }
 /** Separate both footprints; one active victim crashes while the survivor recovers. When allowWreck is false the cars only separate and slow — no crash starts out of the player's sight. */
-export function resolveNpcCollision(a: CollisionNpc, b: CollisionNpc, allowWreck = true) {
+export function resolveNpcCollision(a: CollisionNpc, b: CollisionNpc, allowWreck = true, chaos?: ChaosProfile, rand = Math.random()) {
   const pa = pose(a), pb = pose(b), push = carContact(pa, pb);
   if (!push) return false;
   const freshImpact = a.contactLeft <= 0 && b.contactLeft <= 0;
@@ -108,6 +110,20 @@ export function resolveNpcCollision(a: CollisionNpc, b: CollisionNpc, allowWreck
       survivor.v = Math.max(2, survivor.v * 0.45);
       survivor.recoveryLeft = 1.2;
       survivor.passing = false;
+    } else if (allowWreck && chaos && chaos.pileup > 0 && (a.crashAge < 0) !== (b.crashAge < 0) && rand < chaos.pileup && ((a.crashAge >= 0 ? a : b).crashMotion?.speed ?? 0) > 4) {
+      // Chain reaction: the flying wreck launches the driver it ploughs into and keeps going.
+      const wreck = a.crashAge >= 0 ? a : b, car = wreck === a ? b : a;
+      const ws = wreck.crashMotion?.speed ?? wreck.v;
+      const sev = pileupSeverity(ws, chaos);
+      car.crashOrigin = npcOffset(car);
+      car.crashSide = Math.sign(car.crashOrigin - npcOffset(wreck)) || Math.sign(car.lane) || 1;
+      car.impactOffset = 0; car.shove = sev; car.crashSpeed = Math.max(car.v * 0.6, ws * 0.7);
+      car.crashAge = 0; car.passing = false;
+      car.crashMotion = createCrashMotion(car.crashOrigin, car.crashSpeed, car.crashSide, sev);
+      car.v = car.crashMotion.speed;
+      a.contactLeft = 0.8; b.contactLeft = 0.8;
+      if (wreck.crashMotion) wreck.crashMotion.speed *= 0.75;
+      return true;
     } else {
       // Hitting an existing wreck never turns the remaining driver into a
       // second permanent wreck, or restarts the original wreck's momentum.
