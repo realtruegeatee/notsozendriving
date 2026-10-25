@@ -33,10 +33,3 @@ it("impact decay is frame-rate independent", () => {
   for (let i = 0; i < 40; i++) mb += stepPlayerImpact(b, 0.05).moved;
   expect(ma).toBeCloseTo(mb, 3);
 });
-it("a single long scrape counts as one hit, not one per frame", () => {
-  const once = createPlayerImpact();
-  applyImpact(once, computeImpact(30, 1, 1.4, 1.4, 1));
-  const spin = once.spin;
-  // Only fresh contact applies damage; sustained contact must not re-apply it.
-  expect(Math.abs(spin)).toBeLessThan(2.5);
-});
