@@ -21,7 +21,7 @@ import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import type { DrivingNpc } from "./npc-driving";
 import { createCrashMotion, createSwerveMotion, stepCrashMotion } from "./crash-physics";
 import type { CrashMotion } from "./crash-physics";
-import { chaosProfile, dodgeEvent, hitsEvent, rageSpeed, stepRage, stepRoadEvents } from "./chaos";
+import { chaosProfile, dodgeEvent, rockAhead, hitsEvent, rageSpeed, stepRage, stepRoadEvents } from "./chaos";
 import type { RoadEvent } from "./chaos";
 
 const rageMat = new THREE.MeshStandardMaterial({ color: "#ff2020", emissive: "#ff0000", emissiveIntensity: 4, toneMapped: false });
@@ -345,13 +345,15 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           if (!plan) return;
           n.passing = plan.passing;
           const previousVelocity = n.laneVelocity;
-          // Skilled drivers spot oil and rocks early and steer around them at speed.
-          const dodge = n.skilled && !n.wrongWay && (n.rageLeft ?? 0) <= 0 ? dodgeEvent(events.current, n.s, npcOffset(n), n.v) : null;
+          // Everyone sees big rocks and steers around them; only skilled drivers also spot oil.
+          const dodge = !n.wrongWay && (n.rageLeft ?? 0) <= 0 ? dodgeEvent(events.current, n.s, npcOffset(n), n.v, n.skilled ? ["oil", "rock"] : ["rock"]) : null;
           const laneStep = stepNpcLane(n.passOffset, n.laneVelocity, dodge !== null ? dodge - n.lane : plan.passOffset + (n.wander ?? 0), n.v, dt);
           n.passOffset = laneStep.offset; n.laneVelocity = laneStep.velocity;
           const lean = clamp(-(n.laneVelocity - previousVelocity) / Math.max(dt, 0.001) * Math.sign(n.lane) * 0.012, -0.06, 0.06);
           n.laneRoll += (lean - n.laneRoll) * damp(6, dt);
           target = plan.speed;
+          // No room to steer around a rock: brake hard instead of ploughing into it.
+          if (dodge === null && !n.wrongWay && rockAhead(events.current, n.s, npcOffset(n), n.v)) target = 0;
           const cp = chaosProfile(game.chaos);
           if (n.wrongWay) {
             // Head-on in the player's lane, honking all the way.

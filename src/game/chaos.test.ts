@@ -58,3 +58,16 @@ it("skilled drivers dodge an event with room to spare, but not when it is too la
   // A lane already clear of the event needs no dodge.
   expect(dodgeEvent([oil], 40, -1.8, 25)).toBeNull();
 });
+
+import { rockAhead as rockAheadT, dodgeEvent as dodgeT } from "./chaos";
+it("every driver can steer around a rock but ordinary drivers ignore oil", () => {
+  const rock = [{ kind: "rock" as const, s: 60, offset: 2, radius: 1.2 }];
+  const oil = [{ kind: "oil" as const, s: 60, offset: 2, radius: 1.2 }];
+  expect(dodgeT(rock, 0, 2, 20, ["rock"])).not.toBeNull();
+  expect(dodgeT(oil, 0, 2, 20, ["rock"])).toBeNull();
+});
+it("a rock right ahead makes the car brake", () => {
+  const rock = [{ kind: "rock" as const, s: 15, offset: 2, radius: 1.2 }];
+  expect(rockAheadT(rock, 0, 2, 20)).toBe(true);
+  expect(rockAheadT(rock, 0, -2, 20)).toBe(false);
+});

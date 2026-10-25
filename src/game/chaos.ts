@@ -46,10 +46,10 @@ export function hitsEvent(e: RoadEvent, s: number, offset: number) {
 import { ROAD_HALF } from "./road";
 /** Skilled drivers spot an event early and steer around it at speed.
  * Returns a safe lateral offset, or null when nothing threatens or it is too late to dodge. */
-export function dodgeEvent(events: readonly RoadEvent[], s: number, offset: number, v: number): number | null {
+export function dodgeEvent(events: readonly RoadEvent[], s: number, offset: number, v: number, kinds: readonly RoadEvent["kind"][] = ["oil", "rock"]): number | null {
   let best: RoadEvent | null = null;
   for (const e of events) {
-    if (e.hit) continue;
+    if (e.hit || !kinds.includes(e.kind)) continue;
     const gap = e.s - s;
     if (gap < 0 || gap > Math.max(45, v * 2.5)) continue;
     if (Math.abs(offset - e.offset) >= e.radius + 1.0) continue;
@@ -64,6 +64,11 @@ export function dodgeEvent(events: readonly RoadEvent[], s: number, offset: numb
   let target = best.offset + side * (best.radius + 1.8);
   if (Math.abs(target) > limit) target = best.offset - side * (best.radius + 1.8);
   return Math.max(-limit, Math.min(limit, target));
+}
+
+/** A big rock in this car's path within stopping range: every driver sees it and brakes. */
+export function rockAhead(events: readonly RoadEvent[], s: number, offset: number, v: number) {
+  return events.some((e) => e.kind === "rock" && !e.hit && e.s - s > 0 && e.s - s < Math.max(30, v * 2.2) && Math.abs(offset - e.offset) < e.radius + 1);
 }
 
 /** A flying wreck may knock a driving car into the pileup, harder when the wreck is fast. */
