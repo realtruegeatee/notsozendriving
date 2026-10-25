@@ -311,7 +311,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
           {room && <PlayersChip room={room} />}
         </div>
         <div className="zen-actions">
-          {view === "dashcam" && <DashcamOverlay />}
+          {view === "dashcam" && !paused && <DashcamOverlay />}
           <RecordingButton />
           <RadioButton />
           <button className="zen-panel zen-icon" data-on={view !== "chase"} aria-label={`Camera: ${VIEW_LABEL[view]}`} title={`Camera: ${VIEW_LABEL[view]} (V)`} onClick={() => setView(nextView)}>{view === "dashcam" ? <Video size={18} /> : <Eye size={18} />}</button>
