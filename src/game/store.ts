@@ -15,7 +15,7 @@ export const game = {
   shake: 0,
   warp: 0,
   flashUntil: 0,
-  view: "chase" as "chase" | "cockpit",
+  view: "chase" as "chase" | "cockpit" | "dashcam",
   aggro: "reckless" as import("./aggression").Aggression,
   chaos: "normal" as import("./chaos").Chaos,
 };
@@ -52,8 +52,9 @@ export const input = {
   keys: {} as Record<string, boolean>,
 };
 
-export const hudEls: { speed: HTMLElement | null; dist: HTMLElement | null } = {
+export const hudEls: { speed: HTMLElement | null; dist: HTMLElement | null; dash: HTMLElement | null } = {
   speed: null,
+  dash: null,
   dist: null,
 };
 

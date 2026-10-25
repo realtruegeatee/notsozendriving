@@ -2,7 +2,8 @@ import { AGGRESSION, type Aggression } from "./aggression";
 import { CHAOS } from "./chaos";
 import type { Chaos } from "./chaos";
 import { useEffect, useRef, useState } from "react";
-import { Eye, Moon, Pause, Play, Sun, Gauge, Megaphone, Lamp, MonitorDown } from "lucide-react";
+import { Eye, Moon, Pause, Play, Sun, Gauge, Megaphone, Lamp, MonitorDown, Video } from "lucide-react";
+import { DashcamOverlay } from "./dashcam-overlay";
 import windowsAsset from "../assets/zen-drive-windows.asset.json";
 import linuxAsset from "../assets/zen-drive-linux.asset.json";
 import { Button } from "@/components/ui/button";
@@ -208,6 +209,11 @@ function TimePicker({ night, setNight }: { night: boolean; setNight: (n: boolean
   );
 }
 
+type View = "chase" | "cockpit" | "dashcam";
+const VIEWS: View[] = ["chase", "cockpit", "dashcam"];
+const VIEW_LABEL: Record<View, string> = { chase: "Chase", cockpit: "First person", dashcam: "Dashcam" };
+const nextView = (v: View) => VIEWS[(VIEWS.indexOf(v) + 1) % VIEWS.length]!;
+
 export function HUD({ night, setNight, car, setCar, room, onJoin }: {
   night: boolean; setNight: (n: boolean) => void; car: CarId; setCar: (c: CarId) => void;
   room: string | null; onJoin: (room: string | null, name: string) => void;
@@ -216,7 +222,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
   const [paused, setPaused] = useState(false);
   const [cruise, setCruise] = useState(true);
   const [layout, setLayoutState] = useState<Layout>("wheel-left");
-  const [view, setView] = useState<"chase" | "cockpit">("chase");
+  const [view, setView] = useState<View>("chase");
   const [mode, setMode] = useState<RoadMode>("solo");
   const [name, setName] = useState("");
   const [code, setCode] = useState(newCode);
@@ -224,7 +230,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
   useEffect(() => {
     const saved = localStorage.getItem("zen-layout") as Layout | null;
     if (saved && LAYOUTS.some((l) => l.id === saved)) setLayoutState(saved);
-    if (localStorage.getItem("zen-view") === "cockpit") setView("cockpit");
+    const sv = localStorage.getItem("zen-view") as View | null; if (sv && VIEWS.includes(sv)) setView(sv);
     setName(localStorage.getItem("zen-name") || `Driver${Math.floor(Math.random() * 900 + 100)}`);
     const r = new URLSearchParams(location.search).get("room");
     if (r) { setMode("private"); setCode(r.toUpperCase().slice(0, 6)); }
@@ -238,7 +244,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
       if ((e.target as HTMLElement)?.tagName === "INPUT") return;
       input.keys[e.key.toLowerCase()] = true;
       if (e.key === "n") setNight(!game.night);
-      if (e.key === "v") setView((v) => (v === "chase" ? "cockpit" : "chase"));
+      if (e.key === "v") setView(nextView);
       if (!e.repeat && e.code === "KeyX") horn();
       if (!e.repeat && e.code === "KeyT") flashLights();
     };
@@ -305,9 +311,10 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
           {room && <PlayersChip room={room} />}
         </div>
         <div className="zen-actions">
+          {view === "dashcam" && <DashcamOverlay />}
           <RecordingButton />
           <RadioButton />
-          <button className="zen-panel zen-icon" data-on={view === "cockpit"} aria-label="First person view" onClick={() => setView(view === "chase" ? "cockpit" : "chase")}><Eye size={18} /></button>
+          <button className="zen-panel zen-icon" data-on={view !== "chase"} aria-label={`Camera: ${VIEW_LABEL[view]}`} title={`Camera: ${VIEW_LABEL[view]} (V)`} onClick={() => setView(nextView)}>{view === "dashcam" ? <Video size={18} /> : <Eye size={18} />}</button>
           <button className="zen-panel zen-icon" data-on={cruise} aria-label="Autodrive" title="Autodrive" onClick={() => setCruise(!cruise)}><Gauge size={18} /></button>
           <button className="zen-panel zen-icon" aria-label="Day or night" onClick={() => setNight(!night)}>{night ? <Sun size={18} /> : <Moon size={18} />}</button>
           <button className="zen-panel zen-icon" aria-label="Pause" onClick={() => setPaused(!paused)}>{paused ? <Play size={18} /> : <Pause size={18} />}</button>
