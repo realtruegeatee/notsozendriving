@@ -7,6 +7,7 @@ import { groundY, LANE, ROAD_HALF, roadX, roadXd, roadY, roadYd } from "./road";
 import { CARS, FEEL, game, hudEls, input, net } from "./store";
 import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
+import { applyImpact, computeImpact, controlFactor, createPlayerImpact, massOf, NPC_MASS, stepPlayerImpact } from "./impact";
 import { aggressionProfile } from "./aggression";
 import { planAutodrive, ramTarget, stepBump, stepImpatience, stepUnstick } from "./autodrive";
 import { maxSpeedForDistance, powerCurve } from "./speed";
@@ -140,7 +141,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
   const wheels = useRef<THREE.Object3D[]>([]);
   const spot = useRef<THREE.SpotLight>(null);
   const spotTarget = useMemo(() => new THREE.Object3D(), []);
-  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, signalRevision: trafficSignalRevision(), stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false, backingOff: false, eventTimer: 0, wrongTimer: 0, oilSpin: 0 });
+  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, signalRevision: trafficSignalRevision(), stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false, backingOff: false, eventTimer: 0, wrongTimer: 0, oilSpin: 0, impact: createPlayerImpact() });
   const events = useRef<RoadEvent[]>([]);
   const eventRefs = useRef<(THREE.Group | null)[]>([]);
   const rageRefs = useRef<(THREE.Mesh | null)[]>([]);
@@ -232,6 +233,9 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           else { thr = 1; brk = 0; }
         } else S.backingOff = false;
       } else { S.passing = false; S.blockedFor = 0; S.stuckFor = 0; S.reverseLeft = 0; S.impatience = 0; S.ramming = false; }
+      // After a hard hit the driver (or autopilot) briefly loses grip on steering and throttle.
+      const grip = controlFactor(S.impact);
+      steerIn *= grip; thr *= grip;
       S.steer += (steerIn - S.steer) * damp(7, dt);
 
       let v = game.speed;
@@ -254,9 +258,12 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       }
       // Oil slick: the car keeps spinning a little until the tyres grip again.
       game.yaw += S.oilSpin * dt; S.oilSpin *= Math.exp(-2.5 * dt);
+      const imp = stepPlayerImpact(S.impact, dt);
+      game.yaw += imp.turned;
       game.yaw = clamp(game.yaw, roadYaw - 0.9, roadYaw + 0.9);
       game.x += -Math.sin(game.yaw) * v * dt;
       game.z += -Math.cos(game.yaw) * v * dt;
+      game.x += Math.cos(game.yaw) * imp.moved; game.z -= Math.sin(game.yaw) * imp.moved;
       const lat2 = game.x - roadX(game.z);
       if (Math.abs(lat2) > 12) game.x = roadX(game.z) + Math.sign(lat2) * 12;
       game.distance += Math.max(0, v) * dt;
@@ -437,6 +444,13 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const push = resolveAutopilotNpcContact({ x: game.x, y: roadY(game.z), z: game.z, yaw: game.yaw }, auto, n, n.laneVelocity, game.speed);
         if (push) {
           const launched = !wasCrashing && n.crashAge >= 0;
+          const plen = Math.hypot(push.x, push.z) || 1;
+          const latPush = (push.x * Math.cos(game.yaw) - push.z * Math.sin(game.yaw)) / plen;
+          const closing = n.lane > 0 ? Math.max(0, game.speed - n.v) : game.speed + n.v;
+          const hit = computeImpact(Math.max(closing, Math.abs(latPush) > 0.6 ? game.speed * 0.5 : 0), Math.abs(latPush), massOf(car), NPC_MASS, latPush);
+          if (!wasCrashing) applyImpact(S.impact, hit);
+          if (launched && n.crashMotion) { n.crashMotion.lateral *= hit.npcThrow; n.crashMotion.spin *= hit.npcThrow; n.crashMotion.vertical *= Math.sqrt(hit.npcThrow); }
+          if (hit.controlLoss > 0) game.speed = Math.max(0, game.speed - hit.playerSpeedLoss * 0.5);
           if (launched) {
             n.reaction = "crash"; n.reactionLeft = 7; n.passing = false;
           }
@@ -451,9 +465,9 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           } else if (auto) game.speed *= n.lane > 0 ? 0.97 : 0.7;
           else game.speed *= n.lane > 0 ? 0.85 : 0.3;
           // On autopilot the car holds its line: only a nudge of the contact push applies.
-          const firmness = auto ? 0.25 : 1;
+          const firmness = auto && hit.controlLoss === 0 ? 0.25 : 1;
           game.x += push.x * firmness; game.z += push.z * firmness;
-          game.shake = auto ? 0.2 : 0.5;
+          game.shake = Math.max(auto ? 0.2 : 0.5, Math.min(1.5, hit.controlLoss * 0.6));
         }
       }
     }
@@ -499,31 +513,33 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     if (body.current) body.current.rotation.z = S.roll;
 
     // camera
-    const fp = game.view === "cockpit";
+    const dash = game.view === "dashcam";
+    const fp = game.view === "cockpit" || dash;
     if (body.current) body.current.visible = true;
     S.camYaw += (game.yaw - S.camYaw) * damp(fp ? 12 : 3.5, dt);
     game.shake *= Math.exp(-4 * dt);
     const sh = game.shake * (Math.random() - 0.5);
     if (fp) {
       // Driver's-eye view: seated left of centre, steady head, gentle look into corners.
-      const eye = game.y + 2.5 + Math.sin(game.distance * 0.9) * 0.004 * Math.min(1, game.speed / 10);
+      const wobble = dash ? (Math.sin(game.distance * 2.3) * 0.012 + Math.sin(game.distance * 5.1) * 0.006) * Math.min(1, game.speed / 15) : 0;
+      const eye = game.y + (dash ? 2.25 : 2.5) + wobble + Math.sin(game.distance * 0.9) * 0.004 * Math.min(1, game.speed / 10);
       S.camY = eye;
       // Dashcam: centred behind the windscreen so the bonnet stays in view.
-      const side = 0, fwd = 0.6;
+      const side = 0, fwd = dash ? 0.9 : 0.6;
       const cx = game.x + Math.cos(game.yaw) * side - Math.sin(game.yaw) * -fwd;
       const cz = game.z - Math.sin(game.yaw) * side - Math.cos(game.yaw) * -fwd;
-      camera.position.set(cx + sh * 0.15, eye + sh * 0.15, cz);
+      camera.position.set(cx + sh * (dash ? 0.35 : 0.15), eye + sh * (dash ? 0.35 : 0.15), cz);
       const look = 30 + game.speed * 0.4;
       const lookYaw = S.camYaw + S.steer * 0.12;
       camera.lookAt(cx - Math.sin(lookYaw) * look, roadY(game.z - Math.cos(game.yaw) * look) - 3.5, cz - Math.cos(lookYaw) * look);
-      camera.rotateZ(-S.roll * 0.3);
+      camera.rotateZ(-S.roll * 0.3 + (dash ? sh * 0.08 - S.impact.spin * 0.05 : 0));
     } else {
       const dist = 8.5 + game.speed * 0.05;
       S.camY += (game.y + 3.4 - S.camY) * damp(4, dt);
       camera.position.set(game.x + Math.sin(S.camYaw) * dist + sh, S.camY + sh, game.z + Math.cos(S.camYaw) * dist);
       camera.lookAt(game.x - Math.sin(game.yaw) * 8, game.y + 1.2, game.z - Math.cos(game.yaw) * 8);
     }
-    const fov = (fp ? 62 : 58) + Math.min(game.speed, 60) * (fp ? 0.25 : 0.35);
+    const fov = dash ? 92 + Math.min(game.speed, 60) * 0.08 + game.shake * 4 : (fp ? 62 : 58) + Math.min(game.speed, 60) * (fp ? 0.25 : 0.35);
     if (Math.abs(camera.fov - fov) > 0.01) { camera.fov += (fov - camera.fov) * damp(3, dt); camera.updateProjectionMatrix(); }
 
     if (sun) {

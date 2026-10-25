@@ -15,7 +15,7 @@ export const game = {
   shake: 0,
   warp: 0,
   flashUntil: 0,
-  view: "chase" as "chase" | "cockpit",
+  view: "chase" as "chase" | "cockpit" | "dashcam",
   aggro: "reckless" as import("./aggression").Aggression,
   chaos: "normal" as import("./chaos").Chaos,
 };
