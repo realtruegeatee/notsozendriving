@@ -62,8 +62,13 @@ export function dodgePlan(events: readonly RoadEvent[], s: number, offset: numbe
   if (!best) return null;
   const gap = best.s - s;
   // Too close at this speed: no time to steer clear, so it will hit.
-  if (gap < v * 0.45 + 4) return null;
   const limit = ROAD_HALF - 0.7;
+  // Already swerving: hold the line until past. Otherwise, too late to start a dodge.
+  if (gap < v * 0.45 + 4) {
+    if (prefer === 0) return null;
+    const keep = best.offset + Math.sign(prefer) * (best.radius + 1.8);
+    return { target: Math.max(-limit, Math.min(limit, keep)), side: Math.sign(prefer) };
+  }
   const first = prefer !== 0 ? Math.sign(prefer) : offset >= best.offset ? 1 : -1;
   for (const side of [first, -first]) {
     const target = best.offset + side * (best.radius + 1.8);

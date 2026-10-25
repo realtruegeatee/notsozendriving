@@ -21,7 +21,7 @@ import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import type { DrivingNpc } from "./npc-driving";
 import { createCrashMotion, createSwerveMotion, stepCrashMotion } from "./crash-physics";
 import type { CrashMotion } from "./crash-physics";
-import { chaosProfile, dodgeEvent, rockAhead, hitsEvent, rageSpeed, stepRage, stepRoadEvents } from "./chaos";
+import { chaosProfile, dodgeEvent, dodgePlan, rockAhead, hitsEvent, rageSpeed, stepRage, stepRoadEvents } from "./chaos";
 import type { RoadEvent } from "./chaos";
 
 const rageMat = new THREE.MeshStandardMaterial({ color: "#ff2020", emissive: "#ff0000", emissiveIntensity: 4, toneMapped: false });
@@ -120,7 +120,7 @@ function GltfCar({ url, wheels, driverId }: CarModelProps) {
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; skilled?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; stunLeft?: number; wander?: number; wanderLeft?: number; restFor?: number; rageLeft?: number; rageHonk?: number; wrongWay?: boolean };
+type Npc = { s: number; lane: number; v: number; base: number; aggressive?: boolean; skilled?: boolean; model: string; crashAge: number; reaction: TrafficReaction | null; reactionLeft: number; impactOffset: number; contactLeft: number; passOffset: number; passing: boolean; crashOrigin?: number; shove: number; laneVelocity: number; laneRoll: number; crashSide?: number; dodged?: boolean; crashMotion?: CrashMotion; crashSpeed?: number; recoveryLeft?: number; stunLeft?: number; wander?: number; wanderLeft?: number; restFor?: number; rageLeft?: number; rageHonk?: number; wrongWay?: boolean; dodgeSide?: number };
 const EVENT_POOL = 6;
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
@@ -201,6 +201,8 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       }
       if (auto) {
         const cars = npcs.map((n) => ({ z: -n.s, lane: npcOffset(n), speed: n.v, same: n.lane > 0, laneVelocity: n.crashAge < 0 ? n.laneVelocity : 0, targetLane: n.crashAge < 0 ? n.passing ? -n.lane : n.lane : npcOffset(n) }));
+        // Rocks are stationary obstacles the planner drives around like a stopped car.
+        for (const e of events.current) if (e.kind === "rock" && !e.hit) cars.push({ z: -e.s, lane: e.offset, speed: 0, same: true, laneVelocity: 0, targetLane: e.offset });
         for (const peer of net.positions.values()) if (now - peer.at < STALE_MS) cars.push({ z: peer.z, lane: peer.x - roadX(peer.z), speed: 20, same: Math.abs(peer.yaw - game.yaw) < Math.PI / 2, laneVelocity: 0, targetLane: peer.x - roadX(peer.z) });
         const plan = planAutodrive(game.z, game.speed, S.passing, cars, S.blockedFor, dt, game.x - roadX(game.z), maxSpeedForDistance(game.distance, game.chaos === "mayhem") * prof.speedFactor);
         S.passing = plan.passing;
@@ -235,7 +237,8 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       } else { S.passing = false; S.blockedFor = 0; S.stuckFor = 0; S.reverseLeft = 0; S.impatience = 0; S.ramming = false; }
       // After a hard hit the driver (or autopilot) briefly loses grip on steering and throttle.
       const grip = controlFactor(S.impact);
-      steerIn *= grip; thr *= grip;
+      // The autopilot keeps fighting back toward its lane while dazed.
+      steerIn *= auto ? Math.max(0.4, grip) : grip; thr *= grip;
       S.steer += (steerIn - S.steer) * damp(7, dt);
 
       let v = game.speed;
@@ -346,14 +349,17 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           n.passing = plan.passing;
           const previousVelocity = n.laneVelocity;
           // Everyone sees big rocks and steers around them; only skilled drivers also spot oil.
-          const dodge = !n.wrongWay && (n.rageLeft ?? 0) <= 0 ? dodgeEvent(events.current, n.s, npcOffset(n), n.v, n.skilled ? ["oil", "rock"] : ["rock"]) : null;
+          const oncomingAt = (target: number) => npcs.some((o) => o !== n && o.crashAge < 0 && o.lane * n.lane < 0 && Math.abs(o.s - n.s) < 35 && Math.abs(npcOffset(o) - target) < 2.2);
+          const dp = !n.wrongWay && (n.rageLeft ?? 0) <= 0 ? dodgePlan(events.current, n.s, npcOffset(n), n.v, n.skilled ? ["oil", "rock"] : ["rock"], n.dodgeSide ?? 0, oncomingAt) : null;
+          n.dodgeSide = dp?.side ?? 0;
+          const dodge = dp?.target ?? null;
           const laneStep = stepNpcLane(n.passOffset, n.laneVelocity, dodge !== null ? dodge - n.lane : plan.passOffset + (n.wander ?? 0), n.v, dt);
           n.passOffset = laneStep.offset; n.laneVelocity = laneStep.velocity;
           const lean = clamp(-(n.laneVelocity - previousVelocity) / Math.max(dt, 0.001) * Math.sign(n.lane) * 0.012, -0.06, 0.06);
           n.laneRoll += (lean - n.laneRoll) * damp(6, dt);
           target = plan.speed;
           // No room to steer around a rock: brake hard instead of ploughing into it.
-          if (dodge === null && !n.wrongWay && rockAhead(events.current, n.s, npcOffset(n), n.v)) target = 0;
+          if (dodge === null && !n.wrongWay && rockAhead(events.current, n.s, npcOffset(n), n.v)) target = Math.min(target, 4);
           const cp = chaosProfile(game.chaos);
           if (n.wrongWay) {
             // Head-on in the player's lane, honking all the way.
@@ -442,7 +448,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       }
       // Contact after NPC pair separation, using the player's current position.
       for (const n of npcs) {
-        const wasCrashing = n.crashAge >= 0;
+        const wasCrashing = n.crashAge >= 0, freshContact = n.contactLeft <= 0;
         const push = resolveAutopilotNpcContact({ x: game.x, y: roadY(game.z), z: game.z, yaw: game.yaw }, auto, n, n.laneVelocity, game.speed);
         if (push) {
           const launched = !wasCrashing && n.crashAge >= 0;
@@ -450,7 +456,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           const latPush = (push.x * Math.cos(game.yaw) - push.z * Math.sin(game.yaw)) / plen;
           const closing = n.lane > 0 ? Math.max(0, game.speed - n.v) : game.speed + n.v;
           const hit = computeImpact(Math.max(closing, Math.abs(latPush) > 0.6 ? game.speed * 0.5 : 0), Math.abs(latPush), massOf(car), NPC_MASS, latPush);
-          if (!wasCrashing) applyImpact(S.impact, hit);
+          if (!wasCrashing && freshContact) applyImpact(S.impact, hit);
           if (launched && n.crashMotion) { n.crashMotion.lateral *= hit.npcThrow; n.crashMotion.spin *= hit.npcThrow; n.crashMotion.vertical *= Math.sqrt(hit.npcThrow); }
           if (hit.controlLoss > 0) game.speed = Math.max(0, game.speed - hit.playerSpeedLoss * 0.5);
           if (launched) {
@@ -534,7 +540,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       const look = 30 + game.speed * 0.4;
       const lookYaw = S.camYaw + S.steer * 0.12;
       camera.lookAt(cx - Math.sin(lookYaw) * look, roadY(game.z - Math.cos(game.yaw) * look) - 3.5, cz - Math.cos(lookYaw) * look);
-      camera.rotateZ(-S.roll * 0.3 + (dash ? sh * 0.08 - S.impact.spin * 0.05 : 0));
+      camera.rotateZ(-S.roll * 0.3 + (dash ? clamp(sh * 0.08 - S.impact.spin * 0.05, -0.08, 0.08) : 0));
     } else {
       const dist = 8.5 + game.speed * 0.05;
       S.camY += (game.y + 3.4 - S.camY) * damp(4, dt);
