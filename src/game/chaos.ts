@@ -47,6 +47,10 @@ import { ROAD_HALF } from "./road";
 /** Skilled drivers spot an event early and steer around it at speed.
  * Returns a safe lateral offset, or null when nothing threatens or it is too late to dodge. */
 export function dodgeEvent(events: readonly RoadEvent[], s: number, offset: number, v: number, kinds: readonly RoadEvent["kind"][] = ["oil", "rock"]): number | null {
+  return dodgePlan(events, s, offset, v, kinds)?.target ?? null;
+}
+/** Like dodgeEvent, but keeps a previously chosen side (no flip-flopping) and skips sides another car occupies. */
+export function dodgePlan(events: readonly RoadEvent[], s: number, offset: number, v: number, kinds: readonly RoadEvent["kind"][] = ["oil", "rock"], prefer = 0, blocked: (target: number) => boolean = () => false): { target: number; side: number } | null {
   let best: RoadEvent | null = null;
   for (const e of events) {
     if (e.hit || !kinds.includes(e.kind)) continue;
@@ -58,12 +62,20 @@ export function dodgeEvent(events: readonly RoadEvent[], s: number, offset: numb
   if (!best) return null;
   const gap = best.s - s;
   // Too close at this speed: no time to steer clear, so it will hit.
-  if (gap < v * 0.45 + 4) return null;
   const limit = ROAD_HALF - 0.7;
-  const side = offset >= best.offset ? 1 : -1;
-  let target = best.offset + side * (best.radius + 1.8);
-  if (Math.abs(target) > limit) target = best.offset - side * (best.radius + 1.8);
-  return Math.max(-limit, Math.min(limit, target));
+  // Already swerving: hold the line until past. Otherwise, too late to start a dodge.
+  if (gap < v * 0.45 + 4) {
+    if (prefer === 0) return null;
+    const keep = best.offset + Math.sign(prefer) * (best.radius + 1.8);
+    return { target: Math.max(-limit, Math.min(limit, keep)), side: Math.sign(prefer) };
+  }
+  const first = prefer !== 0 ? Math.sign(prefer) : offset >= best.offset ? 1 : -1;
+  for (const side of [first, -first]) {
+    const target = best.offset + side * (best.radius + 1.8);
+    if (Math.abs(target) > limit || blocked(target)) continue;
+    return { target, side };
+  }
+  return null;
 }
 
 /** A big rock in this car's path within stopping range: every driver sees it and brakes. */

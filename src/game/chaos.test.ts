@@ -71,3 +71,18 @@ it("a rock right ahead makes the car brake", () => {
   expect(rockAheadT(rock, 0, 2, 20)).toBe(true);
   expect(rockAheadT(rock, 0, -2, 20)).toBe(false);
 });
+
+import { dodgePlan } from "./chaos";
+it("a dodging car keeps its chosen side until it is past the rock", () => {
+  const rock = [{ kind: "rock" as const, s: 40, offset: 0, radius: 1.2 }];
+  const first = dodgePlan(rock, 0, 0.1, 20, ["rock"]);
+  expect(first?.side).toBe(1);
+  // Drifted to the other side of centre and now very close: still keeps the original side.
+  expect(dodgePlan(rock, 35, -0.1, 20, ["rock"], 1)?.side).toBe(1);
+});
+it("a dodge never steers into an oncoming car", () => {
+  const rock = [{ kind: "rock" as const, s: 40, offset: 0, radius: 1.2 }];
+  const plan = dodgePlan(rock, 0, 0.1, 20, ["rock"], 0, (t) => t < 0);
+  expect(plan?.target).toBeGreaterThan(0);
+  expect(dodgePlan(rock, 0, 0.1, 20, ["rock"], 0, () => true)).toBeNull();
+});

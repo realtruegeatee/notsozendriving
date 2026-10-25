@@ -238,7 +238,7 @@ body { font-family: var(--font-body); overscroll-behavior: none; }
 .zen-dashcam::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, color-mix(in oklab, var(--ink) 70%, transparent) 100%); }
 .zen-dashcam::after { content: ""; position: absolute; inset: -50%; opacity: 0.07; background-image: repeating-radial-gradient(circle at 17% 32%, var(--paper) 0 1px, transparent 1px 3px); animation: zen-grain 0.4s steps(3) infinite; }
 @keyframes zen-grain { 0% { transform: translate(0, 0); } 33% { transform: translate(-3%, 2%); } 66% { transform: translate(2%, -3%); } }
-.zen-dashcam-row { position: absolute; bottom: 9.5rem; left: 0.8rem; right: 0.8rem; display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em; }
-.zen-dashcam-rec { position: absolute; top: 4.2rem; right: 0.8rem; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 4px; }
+.zen-dashcam-row { position: absolute; top: calc(max(env(safe-area-inset-top), 12px) + 7rem); left: 50%; transform: translateX(-50%); display: flex; gap: 1rem; white-space: nowrap; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; }
+.zen-dashcam-rec { position: absolute; top: calc(max(env(safe-area-inset-top), 12px) + 8.4rem); left: 50%; transform: translateX(-50%); font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; gap: 4px; }
 .zen-dashcam-rec i { width: 9px; height: 9px; border-radius: 50%; background: var(--brake); animation: zen-blink 1s steps(2) infinite; }
 @keyframes zen-blink { 50% { opacity: 0; } }
