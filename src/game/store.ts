@@ -52,8 +52,9 @@ export const input = {
   keys: {} as Record<string, boolean>,
 };
 
-export const hudEls: { speed: HTMLElement | null; dist: HTMLElement | null } = {
+export const hudEls: { speed: HTMLElement | null; dist: HTMLElement | null; dash: HTMLElement | null } = {
   speed: null,
+  dash: null,
   dist: null,
 };
 

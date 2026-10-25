@@ -2,7 +2,8 @@ import { AGGRESSION, type Aggression } from "./aggression";
 import { CHAOS } from "./chaos";
 import type { Chaos } from "./chaos";
 import { useEffect, useRef, useState } from "react";
-import { Eye, Moon, Pause, Play, Sun, Gauge, Megaphone, Lamp, MonitorDown } from "lucide-react";
+import { Eye, Moon, Pause, Play, Sun, Gauge, Megaphone, Lamp, MonitorDown, Video } from "lucide-react";
+import { DashcamOverlay } from "./dashcam-overlay";
 import windowsAsset from "../assets/zen-drive-windows.asset.json";
 import linuxAsset from "../assets/zen-drive-linux.asset.json";
 import { Button } from "@/components/ui/button";
@@ -310,6 +311,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
           {room && <PlayersChip room={room} />}
         </div>
         <div className="zen-actions">
+          {view === "dashcam" && <DashcamOverlay />}
           <RecordingButton />
           <RadioButton />
           <button className="zen-panel zen-icon" data-on={view !== "chase"} aria-label={`Camera: ${VIEW_LABEL[view]}`} title={`Camera: ${VIEW_LABEL[view]} (V)`} onClick={() => setView(nextView)}>{view === "dashcam" ? <Video size={18} /> : <Eye size={18} />}</button>

@@ -551,6 +551,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
 
     if (++S.frame % 6 === 0) {
       if (hudEls.speed) hudEls.speed.textContent = String(Math.round(Math.abs(game.speed) * 3.6));
+      if (hudEls.dash) hudEls.dash.textContent = `${String(Math.round(Math.abs(game.speed) * 3.6)).padStart(3, "0")} KM/H`;
       if (hudEls.dist) hudEls.dist.textContent = (game.distance / 1000).toFixed(1);
     }
   });
