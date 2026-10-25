@@ -530,7 +530,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     if (fp) {
       // Driver's-eye view: seated left of centre, steady head, gentle look into corners.
       const wobble = dash ? (Math.sin(game.distance * 2.3) * 0.012 + Math.sin(game.distance * 5.1) * 0.006) * Math.min(1, game.speed / 15) : 0;
-      const eye = game.y + (dash ? 2.25 : 2.5) + wobble + Math.sin(game.distance * 0.9) * 0.004 * Math.min(1, game.speed / 10);
+      const eye = game.y + (dash ? 2.6 : 2.5) + wobble + Math.sin(game.distance * 0.9) * 0.004 * Math.min(1, game.speed / 10);
       S.camY = eye;
       // Dashcam: centred behind the windscreen so the bonnet stays in view.
       const side = 0, fwd = dash ? 0.9 : 0.6;
