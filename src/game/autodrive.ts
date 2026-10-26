@@ -53,7 +53,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   // Spot an oncoming overtaker early enough to steer out, rather than merely
   // braking in its path. Keep the existing right-pass state until merging is safe.
   const threatenedLane = next === "right" ? RIGHT_PASS : next ? -LANE : LANE;
-  const oncoming = cars.some((c) => !c.same && z - c.z > -8 &&
+  const oncoming = cars.some((c) => !c.same && !stationary(c) && z - c.z > -8 &&
     z - c.z < Math.max(90, (Math.max(0, speed) + c.speed) * 3) &&
     (overlaps(c, currentLane) || overlaps(c, threatenedLane) || overlaps(c, currentLane, encounter(c)) || overlaps(c, threatenedLane, encounter(c))));
   const escapePathClear = (target: number) => !cars.some((c) => {
