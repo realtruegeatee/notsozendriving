@@ -21,7 +21,7 @@ export function stepNpcLane(offset: number, velocity: number, target: number, sp
 }
 
 /** Lane changes keep the original lane as the travel direction. */
-export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], desiredSpeed: number) {
+export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], desiredSpeed: number, allowPassing = true) {
   const direction = Math.sign(car.lane);
   const followingGap = car.aggressive ? 8 : 12;
   const offset = lateral(car);
@@ -33,9 +33,9 @@ export function planNpcDriving(car: DrivingNpc, cars: readonly DrivingNpc[], des
   const mergeClear = !homeCars.some((o) => gap(o) > -Math.max(8, 5 + (o.v - car.v) * 2) && gap(o) < Math.max(8, 6 + (car.v - o.v) * 2));
   // Only start a pass with room to merge back in front of the blocker, never into a queue.
   const mergeSlot = !!blocker && !homeCars.some((o) => o !== blocker && gap(o) > gap(blocker) - 2 && gap(o) < gap(blocker) + (car.aggressive ? 16 : 22));
-  let passing = car.passing;
+  let passing = allowPassing && car.passing;
   if (passing && mergeClear && (!blocker || !passClear)) passing = false;
-  else if (!passing && blocker && passClear && mergeSlot) passing = true;
+  else if (allowPassing && !passing && blocker && passClear && mergeSlot) passing = true;
   // Pull out before catching the blocker; accelerate once the actual footprint clears it.
   const passSpeed = car.aggressive ? Math.min(40, desiredSpeed + 4) : desiredSpeed;
   const clearOfBlocker = !blocker || Math.abs(lateral(blocker) - offset) >= 2.1 || gap(blocker) > Math.max(30, car.v * 1.5);

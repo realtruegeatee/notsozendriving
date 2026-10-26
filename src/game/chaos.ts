@@ -6,6 +6,12 @@ export const CHAOS: { id: Chaos; label: string }[] = [
   { id: "mayhem", label: "Mayhem" },
 ];
 export type ChaosProfile = { pileup: number; ragePerSec: number; eventGap: number; wrongWayGap: number; power: number };
+/** Traffic temperament is independent of the player's chosen driving style. */
+export function trafficProfile(c: Chaos) {
+  return c === "zen"
+    ? { count: 6, calm: true, sameSpeed: 16, oppositeSpeed: 18 }
+    : { count: 16, calm: false, sameSpeed: 0, oppositeSpeed: 0 };
+}
 export function chaosProfile(c: Chaos): ChaosProfile {
   if (c === "zen") return { pileup: 0, ragePerSec: 0, eventGap: Infinity, wrongWayGap: Infinity, power: 0 };
   if (c === "normal") return { pileup: 0.5, ragePerSec: 0.04, eventGap: 14, wrongWayGap: 40, power: 1 };
@@ -55,8 +61,8 @@ export function dodgePlan(events: readonly RoadEvent[], s: number, offset: numbe
   for (const e of events) {
     if (e.hit || !kinds.includes(e.kind)) continue;
     const gap = e.s - s;
-    if (gap < 0 || gap > Math.max(45, v * 2.5)) continue;
-    if (Math.abs(offset - e.offset) >= e.radius + 1.0) continue;
+    if (gap < (prefer ? -e.radius - 3 : 0) || gap > Math.max(65, v * 4)) continue;
+    if (!prefer && Math.abs(offset - e.offset) >= e.radius + 1.0) continue;
     if (!best || e.s < best.s) best = e;
   }
   if (!best) return null;
@@ -67,15 +73,31 @@ export function dodgePlan(events: readonly RoadEvent[], s: number, offset: numbe
   if (gap < v * 0.45 + 4) {
     if (prefer === 0) return null;
     const keep = best.offset + Math.sign(prefer) * (best.radius + 1.8);
-    return { target: Math.max(-limit, Math.min(limit, keep)), side: Math.sign(prefer) };
+    if (Math.abs(keep) > limit || blocked(keep)) return null;
+    return { target: keep, side: Math.sign(prefer) };
   }
   const first = prefer !== 0 ? Math.sign(prefer) : offset >= best.offset ? 1 : -1;
-  for (const side of [first, -first]) {
+  for (const side of prefer ? [first] : [first, -first]) {
     const target = best.offset + side * (best.radius + 1.8);
     if (Math.abs(target) > limit || blocked(target)) continue;
     return { target, side };
   }
   return null;
+}
+
+export type HazardMemory = { event: RoadEvent; side: number };
+/** Keep an escape until the rear bumper clears; slow down if steering room is limited. */
+export function autopilotHazardPlan(events: readonly RoadEvent[], s: number, offset: number, v: number, memory: HazardMemory | null, blocked: (target: number) => boolean = () => false) {
+  const held = memory && events.includes(memory.event) && !memory.event.hit && s <= memory.event.s + memory.event.radius + 3 ? memory : null;
+  const candidates = held ? [held.event] : events.filter((e) => !e.hit && e.s >= s && e.s - s <= Math.max(65, v * 4) && Math.abs(offset - e.offset) < e.radius + 1).sort((a, b) => a.s - b.s);
+  const event = candidates[0];
+  if (!event) return { memory: null, target: null, speed: Infinity };
+  const plan = dodgePlan([event], s, offset, v, ["oil", "rock"], held?.side ?? 0, blocked);
+  const gap = Math.max(0, event.s - s - event.radius - 3);
+  if (!plan) return { memory: held, target: null, speed: Math.sqrt(2 * 12 * gap) };
+  const lateral = Math.abs(plan.target - offset);
+  const steeringTime = 0.8 + lateral / 1.8;
+  return { memory: { event, side: plan.side }, target: plan.target, speed: lateral < 0.3 ? Infinity : Math.max(3, gap / steeringTime) };
 }
 
 /** A big rock in this car's path within stopping range: every driver sees it and brakes. */

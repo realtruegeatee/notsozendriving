@@ -3,6 +3,12 @@ import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import { LANE } from "./road";
 
 const npc = (s: number, v: number, lane = LANE) => ({ s, v, base: v, lane, crashAge: -1, passOffset: 0, passing: false });
+it("calm traffic follows instead of starting an aggressive pass", () => {
+  const car = npc(0, 18), slow = npc(25, 12);
+  const plan = planNpcDriving(car, [car, slow], 18, false);
+  expect(plan.passing).toBe(false);
+  expect(plan.passOffset).toBe(0);
+});
 it("aggressive NPCs cruise faster in both directions", () => {
   for (const same of [true, false]) {
     expect(npcCruisingSpeed(same, true, 0)).toBe(28);

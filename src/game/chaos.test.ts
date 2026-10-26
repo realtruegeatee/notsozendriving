@@ -1,4 +1,31 @@
 import { expect, it } from "vitest";
+import { autopilotHazardPlan, trafficProfile } from "./chaos";
+
+it("Zen has fewer calm cars than Normal and Mayhem", () => {
+  expect(trafficProfile("zen").count).toBe(6);
+  expect(trafficProfile("zen").count).toBeLessThan(trafficProfile("normal").count);
+  expect(trafficProfile("zen").count).toBeLessThan(trafficProfile("mayhem").count);
+  expect(trafficProfile("zen").calm).toBe(true);
+  expect(trafficProfile("normal").calm).toBe(false);
+});
+for (const kind of ["oil", "rock"] as const) {
+  it(`autopilot holds a safe ${kind} escape until the rear clears`, () => {
+    const e: RoadEvent = { kind, s: 100, offset: 2.1, radius: kind === "oil" ? 2.6 : 1.3 };
+    const first = autopilotHazardPlan([e], 30, 2.1, 30, null);
+    expect(first.target).not.toBeNull();
+    if (first.target === null) throw new Error("Expected escape");
+    expect(hitsEvent(e, 100, first.target)).toBe(false);
+    expect(autopilotHazardPlan([e], 101, first.target, 20, first.memory).target).toBe(first.target);
+    expect(autopilotHazardPlan([e], 107, first.target, 20, first.memory).target).toBeNull();
+  });
+}
+it("autopilot brakes when traffic blocks both hazard escapes", () => {
+  const e: RoadEvent = { kind: "rock", s: 30, offset: 0, radius: 1.3 };
+  const plan = autopilotHazardPlan([e], 0, 0, 20, null, () => true);
+  expect(plan.target).toBeNull();
+  expect(plan.speed).toBeLessThan(30);
+  expect(autopilotHazardPlan([e], 26, 0, 20, null, () => true).speed).toBe(0);
+});
 import { chaosProfile, dodgeEvent, hitsEvent, pileupSeverity, RAGE_FOR, stepRage, stepRoadEvents } from "./chaos";
 import type { RoadEvent } from "./chaos";
 import { resolveNpcCollision } from "./npc-collision";
