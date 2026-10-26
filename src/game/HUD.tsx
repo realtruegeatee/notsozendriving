@@ -4,6 +4,7 @@ import type { Chaos } from "./chaos";
 import { useEffect, useRef, useState } from "react";
 import { Eye, Moon, Pause, Play, Sun, Gauge, Megaphone, Lamp, MonitorDown, Video } from "lucide-react";
 import { DashcamOverlay } from "./dashcam-overlay";
+import { WorldBanner } from "./WorldBanner";
 import windowsAsset from "../assets/zen-drive-windows.asset.json";
 import linuxAsset from "../assets/zen-drive-linux.asset.json";
 import { Button } from "@/components/ui/button";
@@ -272,7 +273,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
       <div className="zen-overlay">
         <div className="zen-card zen-scroll">
           <h1 className="zen-title">Zen Drive</h1>
-          <p className="zen-sub">No timer, no finish line. Just keep driving.</p>
+          <p className="zen-sub">One road, many worlds. No timer, no finish line. Just keep driving.</p>
           <OnlinePicker mode={mode} setMode={setMode} name={name} setName={setName} code={code} setCode={setCode} />
           <TimePicker night={night} setNight={setNight} />
           <CarPicker car={car} setCar={pickCar} />
@@ -308,6 +309,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
             <span ref={(el) => { hudEls.speed = el; }} className="zen-num">0</span><span className="zen-unit">km/h</span>
             <span ref={(el) => { hudEls.dist = el; }} className="zen-num">0.0</span><span className="zen-unit">km</span>
           </div>
+          <WorldBanner />
           {room && <PlayersChip room={room} />}
         </div>
         <div className="zen-actions">
