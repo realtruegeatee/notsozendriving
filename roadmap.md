@@ -1,6 +1,6 @@
 # Roadmap
-- [ ] Improve autopilot avoidance of rocks and oil splats
-- [ ] Give Zen fewer cars and calm driving behaviour
+- [x] Improve autopilot avoidance of rocks and oil splats
+- [x] Give Zen fewer cars and calm driving behaviour
 - [x] Fix crashed cars on the opposite side wrongly stopping the autopilot
 - [x] More NPC cars on the road (16, tighter spacing)
 - [x] Crash start distance pulled closer to the player (140 m band)
