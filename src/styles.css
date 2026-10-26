@@ -242,3 +242,10 @@ body { font-family: var(--font-body); overscroll-behavior: none; }
 .zen-dashcam-rec { position: absolute; top: calc(max(env(safe-area-inset-top), 12px) + 8.4rem); left: 50%; transform: translateX(-50%); font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; gap: 4px; }
 .zen-dashcam-rec i { width: 9px; height: 9px; border-radius: 50%; background: var(--brake); animation: zen-blink 1s steps(2) infinite; }
 @keyframes zen-blink { 50% { opacity: 0; } }
+
+/* World announcements: "one road, many worlds" */
+.zen-world-chip { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.08em; padding: 4px 8px; width: max-content; pointer-events: none; }
+.zen-world-banner { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; animation: zen-world-in 3.2s ease forwards; z-index: 5; }
+.zen-world-num { font-family: ui-monospace, monospace; font-size: 12px; letter-spacing: 0.2em; background: var(--foreground); color: var(--background); padding: 2px 8px; }
+.zen-world-name { font-weight: 800; font-size: clamp(28px, 7vw, 52px); color: var(--background); background: var(--foreground); padding: 2px 14px; border-left: 4px solid var(--destructive); box-shadow: 4px 4px 0 var(--destructive); }
+@keyframes zen-world-in { 0% { opacity: 0; transform: translate(-50%, 12px); } 12%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
