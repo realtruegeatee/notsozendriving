@@ -21,8 +21,8 @@ import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import type { DrivingNpc } from "./npc-driving";
 import { createCrashMotion, createSwerveMotion, stepCrashMotion } from "./crash-physics";
 import type { CrashMotion } from "./crash-physics";
-import { chaosProfile, dodgeEvent, dodgePlan, rockAhead, hitsEvent, rageSpeed, stepRage, stepRoadEvents } from "./chaos";
-import type { RoadEvent } from "./chaos";
+import { autopilotHazardPlan, chaosProfile, trafficProfile, dodgePlan, rockAhead, hitsEvent, rageSpeed, stepRage, stepRoadEvents } from "./chaos";
+import type { HazardMemory, RoadEvent } from "./chaos";
 
 const rageMat = new THREE.MeshStandardMaterial({ color: "#ff2020", emissive: "#ff0000", emissiveIntensity: 4, toneMapped: false });
 
@@ -124,7 +124,7 @@ type Npc = { s: number; lane: number; v: number; base: number; aggressive?: bool
 const EVENT_POOL = 6;
 
 export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean }) {
-  const npcs = useMemo<Npc[]>(() => {
+  const pool = useMemo<Npc[]>(() => {
     const arr: Npc[] = [];
     if (!traffic) return arr;
     for (let i = 0; i < 16; i++) {
@@ -143,6 +143,8 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
   const spotTarget = useMemo(() => new THREE.Object3D(), []);
   const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, signalRevision: trafficSignalRevision(), stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false, backingOff: false, eventTimer: 0, wrongTimer: 0, oilSpin: 0, impact: createPlayerImpact() });
   const events = useRef<RoadEvent[]>([]);
+  const hazard = useRef<HazardMemory | null>(null);
+  const previousChaos = useRef<string>("");
   const eventRefs = useRef<(THREE.Group | null)[]>([]);
   const rageRefs = useRef<(THREE.Mesh | null)[]>([]);
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
@@ -151,6 +153,28 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     const sun = state.scene.getObjectByName("sun") as THREE.DirectionalLight | undefined;
     const dt = Math.min(raw, 0.05);
     const S = st.current;
+    const temperament = trafficProfile(game.chaos);
+    const npcs = pool.slice(0, temperament.count);
+    pool.forEach((n, i) => {
+      const visible = i < npcs.length;
+      const g = refs.current[i];
+      if (g) g.visible = visible;
+      if (previousChaos.current !== game.chaos && visible) {
+        if (temperament.calm) {
+          n.lane = i % 2 === 0 ? LANE : -LANE;
+          n.s = -game.z + 70 + i * 75;
+          n.base = n.lane > 0 ? temperament.sameSpeed : temperament.oppositeSpeed;
+          n.v = n.base; n.aggressive = false; n.passing = false; n.passOffset = 0;
+          n.laneVelocity = 0; n.wander = 0; n.wanderLeft = 0; n.rageLeft = 0;
+          n.wrongWay = false; n.reaction = null; n.reactionLeft = 0; n.crashAge = -1;
+          delete n.crashMotion; n.impactOffset = 0; n.stunLeft = 0;
+        } else {
+          n.aggressive = i % 3 !== 0;
+          n.base = npcCruisingSpeed(n.lane > 0, n.aggressive, Math.random());
+        }
+      }
+    });
+    previousChaos.current = game.chaos;
     if (!S.init) {
       game.z = 0; game.x = roadX(0) + LANE; game.yaw = Math.atan(roadXd(0)); S.camYaw = game.yaw; S.init = true;
     }
@@ -184,12 +208,12 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       let steerIn = clamp(input.steer + (k["d"] || k["arrowright"] ? 1 : 0) - (k["a"] || k["arrowleft"] ? 1 : 0), -1, 1);
       S.signalCooldown = Math.max(0, S.signalCooldown - dt);
       const prof = aggressionProfile(game.aggro);
-      if (prof.signals && shouldAutopilotSignal(auto, game.speed, S.signalCooldown, ps, game.x - roadX(game.z), npcs)) {
+      if (!temperament.calm && prof.signals && shouldAutopilotSignal(auto, game.speed, S.signalCooldown, ps, game.x - roadX(game.z), npcs)) {
         horn(); flashLights(); S.signalCooldown = SIGNAL_GAP;
       }
       if (S.signalRevision !== trafficSignalRevision()) {
         S.signalRevision = trafficSignalRevision();
-        for (const n of npcs) if (threatenedTraffic(ps, n)) {
+        for (const n of npcs) if (!temperament.calm && threatenedTraffic(ps, n)) {
           n.reaction = chooseTrafficReaction(Math.random()); n.reactionLeft = 2.5;
           if (n.reaction === "crash" && crashVisible(ps, n)) {
             n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane);
@@ -209,12 +233,22 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         S.blockedFor = plan.blockedFor;
         const lookZ = game.z - Math.max(12, game.speed * 0.6);
         // The autopilot spots oil and rocks early and steers around them at speed.
-        const dodge = dodgeEvent(events.current, -game.z, game.x - roadX(game.z), game.speed);
-        const desired = Math.atan2(game.x - roadX(lookZ) - (dodge !== null ? dodge : plan.lane), game.z - lookZ);
+        const offset = game.x - roadX(game.z);
+        const blocked = (target: number) => cars.some((c) => {
+          const gap = game.z - c.z;
+          const horizon = Math.max(2, Math.abs(target - offset) / 1.8);
+          const futureGap = gap + ((c.same ? c.speed : -c.speed) - game.speed) * horizon;
+          const futureLane = c.lane + c.laneVelocity * horizon;
+          return Math.min(gap, futureGap) < 18 && Math.max(gap, futureGap) > -12 && Math.abs(futureLane - target) < 2.2;
+        });
+        const dodge = autopilotHazardPlan(events.current, -game.z, offset, game.speed, hazard.current, blocked);
+        hazard.current = dodge.memory;
+        const targetSpeed = Math.min(plan.targetSpeed, dodge.speed);
+        const desired = Math.atan2(game.x - roadX(lookZ) - (dodge.target ?? plan.lane), game.z - lookZ);
         steerIn = clamp((game.yaw - desired) * 5, -1, 1);
-        thr = clamp((plan.targetSpeed - game.speed) * 0.45, 0, 1);
-        brk = clamp((game.speed - plan.targetSpeed) * 0.5, 0, 1);
-        const u = stepUnstick(S.stuckFor, S.reverseLeft, game.speed, plan.targetSpeed, dt);
+        thr = clamp((targetSpeed - game.speed) * 0.45, 0, 1);
+        brk = clamp((game.speed - targetSpeed) * 0.5, 0, 1);
+        const u = stepUnstick(S.stuckFor, S.reverseLeft, game.speed, targetSpeed, dt);
         S.stuckFor = u.stuckFor; S.reverseLeft = u.reverseLeft; reversing = u.reversing;
         if (reversing) { thr = 0; brk = 0; steerIn = 0; }
         if (u.retryPass) { S.passing = true; S.blockedFor = 0; }
@@ -222,7 +256,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const target = ramTarget(game.z, lat0, cars);
         // Only lose patience when no pass is possible.
         const heldUp = !plan.passing && plan.targetSpeed < Math.min(game.speed + 2, maxSpeedForDistance(game.distance, game.chaos === "mayhem") * 0.7);
-        const imp = stepImpatience(S.impatience, S.ramming && !plan.passing, heldUp, prof.ramming && !!target, dt);
+        const imp = stepImpatience(S.impatience, S.ramming && !plan.passing, heldUp, !temperament.calm && !isFinite(dodge.speed) && dodge.target === null && prof.ramming && !!target, dt);
         S.impatience = imp.impatience; S.ramming = imp.ramming;
         if (S.ramming && target) {
           // Out of patience: bump it repeatedly — charge, hit, back off, charge again.
@@ -234,7 +268,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           if (S.backingOff) { thr = 0; brk = 1; }
           else { thr = 1; brk = 0; }
         } else S.backingOff = false;
-      } else { S.passing = false; S.blockedFor = 0; S.stuckFor = 0; S.reverseLeft = 0; S.impatience = 0; S.ramming = false; }
+      } else { hazard.current = null; S.passing = false; S.blockedFor = 0; S.stuckFor = 0; S.reverseLeft = 0; S.impatience = 0; S.ramming = false; }
       // After a hard hit the driver (or autopilot) briefly loses grip on steering and throttle.
       const grip = controlFactor(S.impact);
       // The autopilot keeps fighting back toward its lane while dazed.
@@ -309,7 +343,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
     nearby.push({ s: -game.z, lane: playerLane, offset: pLat, passOffset: pLat - playerLane, v: game.speed, base: game.speed, crashAge: -1, passing: false });
     const plans = active ? npcs.map((n, i) => {
       const snapshot = nearby[i];
-      return snapshot ? planNpcDriving(snapshot, nearby, npcTargetSpeed(n.base, n.reactionLeft > dt ? n.reaction : null, n.crashAge >= 0)) : undefined;
+      return snapshot ? planNpcDriving(snapshot, nearby, npcTargetSpeed(n.base, n.reactionLeft > dt ? n.reaction : null, n.crashAge >= 0), !temperament.calm) : undefined;
     }) : [];
     npcs.forEach((n, i) => {
       const same = n.lane > 0;
@@ -335,7 +369,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           // wandering, and the rare random dive off the road.
           n.wanderLeft = Math.max(0, (n.wanderLeft ?? 0) - dt);
           if (n.wanderLeft === 0) n.wander = 0;
-          if (!n.passing && n.reactionLeft <= 0 && (n.recoveryLeft ?? 0) <= 0 && shouldActSporadic(Math.random(), dt)) {
+          if (!temperament.calm && !n.passing && n.reactionLeft <= 0 && (n.recoveryLeft ?? 0) <= 0 && shouldActSporadic(Math.random(), dt)) {
             const mood = chooseSporadicEvent(Math.random());
             if (mood === "wander") { n.wander = (Math.random() - 0.5) * 2.6; n.wanderLeft = 1.5 + Math.random() * 2; }
             else if (mood === "crash") {
@@ -391,7 +425,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           }
           if (!plan.swerve) delete n.dodged;
           if (plan.swerve && n.dodged === undefined) n.dodged = !shouldSwerveForPass(Math.random());
-          if (plan.swerve && !n.dodged && crashVisible(ps, n)) { n.reaction = "crash"; n.reactionLeft = 7; n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false; }
+          if (plan.swerve && !temperament.calm && !n.dodged && crashVisible(ps, n)) { n.reaction = "crash"; n.reactionLeft = 7; n.crashOrigin = npcOffset(n); n.crashSide = (Math.random() < 0.5 ? 1 : -1) * Math.sign(n.lane); n.impactOffset = 0; n.shove = 0; n.crashAge = 0; n.passing = false; }
         }
         if (same && !crashing) {
           const ahead = ps - n.s;
@@ -421,7 +455,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const ds = n.s - ps;
         if (ds < -50 || ds > 520) {
           n.s = ps + 180 + Math.random() * 320;
-          n.base = npcCruisingSpeed(same, n.aggressive ?? false, Math.random());
+          n.base = temperament.calm ? same ? temperament.sameSpeed : temperament.oppositeSpeed : npcCruisingSpeed(same, n.aggressive ?? false, Math.random());
           n.skilled = Math.random() < 0.45;
           n.v = n.base;
           n.crashAge = -1;
@@ -573,7 +607,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         <primitive object={spotTarget} position={[0, 0, -25]} />
         <spotLight ref={spot} position={[0, 0.9, -2]} target={spotTarget} angle={0.55} penumbra={0.7} distance={70} decay={1.2} color="#fff1d0" />
       </group>
-      {npcs.map((n, i) => (
+      {pool.map((n, i) => (
         <group key={i} name={`traffic-${i}`} ref={(el) => { refs.current[i] = el; }}>
           <CarModel url={n.model} />
           <mesh ref={(el) => { rageRefs.current[i] = el; }} visible={false} position={[0, 2.1, 0]} material={rageMat}>
