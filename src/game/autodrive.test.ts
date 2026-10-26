@@ -272,3 +272,34 @@ it("still waits patiently before right-passing a merely slow car", () => {
   ], 0, 0.05, LANE);
   expect(result.passing).toBe(false);
 });
+it("does not treat a distant opposite-side wreck as approaching traffic that prevents passing", () => {
+  const result = planAutodrive(0, 10, false, [
+    { z: -15, lane: LANE, speed: 0, same: true },
+    { z: -55, lane: -LANE, speed: 0, same: false },
+  ]);
+  expect(result.passing).toBe(true);
+  expect(result.lane).toBe(-LANE);
+  expect(result.targetSpeed).toBeGreaterThan(10);
+});
+it("ignores opposite-side stopped wrecks when driving along a clear home lane", () => {
+  for (const z of [-8, -20, -55]) {
+    const result = planAutodrive(0, 25, false, [{ z, lane: -LANE, speed: 0, same: false }]);
+    expect(result.lane).toBe(LANE);
+    expect(result.targetSpeed).toBe(34);
+  }
+});
+it("treats stopped wrecks identically regardless of their former driving direction", () => {
+  for (const lane of [LANE, -LANE, RIGHT_PASS]) {
+    const wreck = { z: -50, lane, speed: 0, same: true };
+    expect(planAutodrive(0, 10, true, [wreck], 0, 0.05, -LANE))
+      .toEqual(planAutodrive(0, 10, true, [{ ...wreck, same: false }], 0, 0.05, -LANE));
+  }
+});
+it("still stops for an opposite-direction wreck actually occupying the passing path", () => {
+  const result = planAutodrive(0, 10, true, [
+    { z: -5, lane: -LANE, speed: 0, same: false },
+    { z: 0, lane: LANE, speed: 0, same: true },
+    { z: 0, lane: RIGHT_PASS, speed: 0, same: true },
+  ], 0, 0.05, -LANE);
+  expect(result.targetSpeed).toBe(0);
+});

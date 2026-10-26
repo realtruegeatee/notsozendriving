@@ -15,21 +15,23 @@ export const RIGHT_PASS = ROAD_HALF - 1;
 export const RIGHT_PASS_WAIT = 1.5;
 export function planAutodrive(z: number, speed: number, passing: Passing, cars: RoadCar[], blockedFor = 0, dt = 0, currentLane = passing === "right" ? RIGHT_PASS : passing ? -LANE : LANE, maxSpeed = 34) {
   const overlaps = (c: RoadCar, lane: number, seconds = 0) => Math.abs(predictedLane(c, seconds) - lane) < 2.2;
-  const closing = (c: RoadCar) => c.same ? speed - c.speed : Math.max(0, speed) + c.speed;
+  // A stopped wreck has no oncoming direction, even if it used to travel toward us.
+  const stationary = (c: RoadCar) => c.speed < 1;
+  const closing = (c: RoadCar) => stationary(c) ? Math.max(0, speed) : c.same ? speed - c.speed : Math.max(0, speed) + c.speed;
   const encounter = (c: RoadCar) => Math.max(0, (z - c.z) / Math.max(1, closing(c)));
   const ahead = cars.filter((c) => (c.same || c.speed < 1) && (overlaps(c, LANE) || overlaps(c, LANE, 1)) && z - c.z > -6 && z - c.z < Math.max(90, speed * 2.5));
   const blocker = ahead.filter((c) => c.speed < maxSpeed - 2).sort((a, b) => (z - a.z) - (z - b.z))[0];
   const blocked = (lane: number) => cars.some((c) => {
     const gap = z - c.z;
-    const near = gap > -Math.max(8, (c.speed - speed) * 0.8) && gap < (c.same ? Math.max(24, closing(c) * 1.2) : Math.max(70, closing(c) * 1.6));
+    const near = gap > -Math.max(8, (c.speed - speed) * 0.8) && gap < (c.same || stationary(c) ? Math.max(24, closing(c) * 1.2) : Math.max(70, closing(c) * 1.6));
     return near && (overlaps(c, lane) || overlaps(c, lane, Math.min(1.2, encounter(c))));
   });
   const leftBlocked = blocked(-LANE), rightBlocked = blocked(RIGHT_PASS);
   const mergeSafe = !cars.some((c) => {
     if (!overlaps(c, LANE) && !overlaps(c, LANE, 1.2)) return false;
     const gap = z - c.z;
-    const aheadGap = c.same ? 8 + Math.max(0, speed - c.speed) * 0.6 : Math.max(90, (speed + c.speed) * 3);
-    const behindGap = 6 + (c.same ? Math.max(0, c.speed - speed) * 0.8 : 0);
+    const aheadGap = c.same || stationary(c) ? 8 + Math.max(0, speed - c.speed) * 0.6 : Math.max(90, (speed + c.speed) * 3);
+    const behindGap = 6 + (c.same || stationary(c) ? Math.max(0, c.speed - speed) * 0.8 : 0);
     const futureGap = gap - closing(c) * 1.2;
     return (gap > -behindGap && gap < aheadGap) || (futureGap > -behindGap && futureGap < aheadGap);
   });
@@ -51,7 +53,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   // Spot an oncoming overtaker early enough to steer out, rather than merely
   // braking in its path. Keep the existing right-pass state until merging is safe.
   const threatenedLane = next === "right" ? RIGHT_PASS : next ? -LANE : LANE;
-  const oncoming = cars.some((c) => !c.same && z - c.z > -8 &&
+  const oncoming = cars.some((c) => !c.same && !stationary(c) && z - c.z > -8 &&
     z - c.z < Math.max(90, (Math.max(0, speed) + c.speed) * 3) &&
     (overlaps(c, currentLane) || overlaps(c, threatenedLane) || overlaps(c, currentLane, encounter(c)) || overlaps(c, threatenedLane, encounter(c))));
   const escapePathClear = (target: number) => !cars.some((c) => {
