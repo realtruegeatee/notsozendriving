@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Fix crashed cars on the opposite side wrongly stopping the autopilot
+- [x] Fix crashed cars on the opposite side wrongly stopping the autopilot
 - [x] More NPC cars on the road (16, tighter spacing)
 - [x] Crash start distance pulled closer to the player (140 m band)
 - [x] More violent-looking crashes: bigger skids, spin and airtime
