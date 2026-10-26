@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Fix autopilot stopping for misplaced cars outside its driving path
 - [x] More NPC cars on the road (16, tighter spacing)
 - [x] Crash start distance pulled closer to the player (140 m band)
 - [x] More violent-looking crashes: bigger skids, spin and airtime
