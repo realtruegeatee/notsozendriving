@@ -30,7 +30,11 @@ export function cruisingDodge(z: number, speed: number, currentLane: number, car
   if (!threats.length) return null;
   // Finish a safe crossing rather than picking a new side halfway through it.
   // Normal road lanes win over shoulders, even when the shoulder is closer.
-  const candidates = [...new Set([...(committedLane === undefined ? [] : [committedLane]), LANE, -LANE, RIGHT_PASS, -RIGHT_PASS])]
+  // Beyond the lanes, any free line across the tarmac counts, nearest first.
+  const free: number[] = [];
+  for (let x = -RIGHT_PASS; x <= RIGHT_PASS + 0.01; x += 0.5) free.push(Math.round(x * 100) / 100);
+  free.sort((a, b) => Math.abs(a - currentLane) - Math.abs(b - currentLane));
+  const candidates = [...new Set([...(committedLane === undefined ? [] : [committedLane]), LANE, -LANE, RIGHT_PASS, -RIGHT_PASS, ...free])]
     .filter((lane) => lane === committedLane || Math.abs(lane - currentLane) > 2.2);
   for (const target of candidates) {
     const crossingTime = 0.45 + Math.abs(target - currentLane) / 3;
@@ -48,7 +52,7 @@ export function cruisingDodge(z: number, speed: number, currentLane: number, car
       if (encounterTime < crossingTime + 1.5 && gap > -8 && Math.abs(predictedLane(c, encounterTime) - target) < 2.2) return false;
       return true;
     });
-    if (clear) return { lane: target, passing: target === LANE ? false : target === RIGHT_PASS ? "right" : target === -RIGHT_PASS ? "left-shoulder" : true } as { lane: number; passing: Passing };
+    if (clear) return { lane: target, passing: target > LANE + 0.5 ? "right" : target < -LANE - 0.5 ? "left-shoulder" : target < 0 ? true : false } as { lane: number; passing: Passing };
   }
   return null;
 }
