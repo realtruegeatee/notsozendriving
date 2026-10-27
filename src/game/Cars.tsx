@@ -9,7 +9,7 @@ import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
 import { applyImpact, computeImpact, controlFactor, createPlayerImpact, massOf, NPC_MASS, stepPlayerImpact } from "./impact";
 import { aggressionProfile } from "./aggression";
-import { AUTOPILOT_MIN_SPEED, movingAutopilotSpeed, planAutodrive, ramTarget, stepBump, stepImpatience } from "./autodrive";
+import { AUTOPILOT_MIN_SPEED, cruisingDodge, movingAutopilotSpeed, planAutodrive, ramTarget, stepBump, stepImpatience } from "./autodrive";
 import { manualReverse } from "./reverse";
 import { maxSpeedForDistance, powerCurve } from "./speed";
 import type { Passing } from "./autodrive";
@@ -231,9 +231,11 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         for (const e of events.current) if (e.kind === "rock" && !e.hit) cars.push({ z: -e.s, lane: e.offset, speed: 0, same: true, laneVelocity: 0, targetLane: e.offset });
         for (const peer of net.positions.values()) if (now - peer.at < STALE_MS) cars.push({ z: peer.z, lane: peer.x - roadX(peer.z), speed: 20, same: Math.abs(peer.yaw - game.yaw) < Math.PI / 2, laneVelocity: 0, targetLane: peer.x - roadX(peer.z) });
         const plan = planAutodrive(game.z, game.speed, S.passing, cars, S.blockedFor, dt, game.x - roadX(game.z), maxSpeedForDistance(game.distance, game.chaos === "mayhem") * prof.speedFactor);
+        const evasive = cruisingDodge(game.z, game.speed, game.x - roadX(game.z), cars);
+        if (evasive) { plan.lane = evasive.lane; plan.passing = evasive.passing; }
         S.passing = plan.passing;
         S.blockedFor = plan.blockedFor;
-        const lookZ = game.z - Math.max(12, game.speed * 0.6);
+        const lookZ = game.z - Math.max(12, game.speed * (evasive ? 0.3 : 0.6));
         // The autopilot spots oil and rocks early and steers around them at speed.
         const offset = game.x - roadX(game.z);
         const blocked = (target: number) => cars.some((c) => {
