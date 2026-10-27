@@ -9,3 +9,17 @@ describe("worlds", () => {
     expect(worldAt(900 * 3 + 10).label).toBe("world 04");
   });
 });
+
+import { weatherAt } from "./worlds";
+import { BIOME_LEN, biomeOf } from "./road";
+describe("new worlds", () => {
+  it("snows in the tundra and rains in neon city", () => {
+    const find = (b: string) => { for (let i = 1; i < 500; i++) if (biomeOf(i) === b) return i; throw new Error(b); };
+    expect(weatherAt(find("tundra") * BIOME_LEN + 100).snow).toBe(1);
+    expect(weatherAt(find("neon") * BIOME_LEN + 100).rain).toBe(1);
+    expect(weatherAt(find("volcanic") * BIOME_LEN + 100).ash).toBe(1);
+  });
+  it("starts with clear weather", () => {
+    expect(weatherAt(100)).toEqual({ snow: 0, rain: 0, ash: 0 });
+  });
+});
