@@ -17,11 +17,15 @@ export const AUTOPILOT_MIN_SPEED = 3;
 /** Early escape at cruising speed, using predicted gaps throughout the crossing. */
 export function cruisingDodge(z: number, speed: number, currentLane: number, cars: RoadCar[], committedLane?: number) {
   const approach = (c: RoadCar) => c.speed < 1 ? speed : c.same ? speed - c.speed : speed + c.speed;
+  // Wrecks sit at odd angles, so they get a wider footprint than driving cars.
+  const width = (c: RoadCar) => c.speed < 1 ? 2.7 : 2.5;
   const threats = cars.filter((c) => {
     const gap = z - c.z;
     const closing = approach(c);
-    return closing > 2 && gap > -4 && gap < Math.max(45, closing * 4.2) &&
-      (Math.abs(c.lane - currentLane) < 2.2 || Math.abs(predictedLane(c, Math.max(0, gap / closing)) - currentLane) < 2.2);
+    if (closing <= 2 || gap <= -6 || gap >= Math.max(45, closing * 4.2)) return false;
+    // Sample the whole approach so cars merging in mid-way are spotted too.
+    const meet = Math.max(0, gap / closing);
+    return [0, meet * 0.33, meet * 0.66, meet, meet + 0.4].some((t) => Math.abs(predictedLane(c, t) - currentLane) < width(c));
   });
   if (!threats.length) return null;
   // Finish a safe crossing rather than picking a new side halfway through it.
