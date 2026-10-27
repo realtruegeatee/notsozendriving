@@ -103,7 +103,15 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
     const alternatives = [LANE, RIGHT_PASS, -LANE, -RIGHT_PASS]
       .filter((target) => Math.abs(target - currentLane) > 0.5)
       .sort((a, b) => Math.abs(a - currentLane) - Math.abs(b - currentLane));
-    const escape = alternatives.find((target) => !blocked(target) && escapePathClear(target));
+    const escape = alternatives.find((target) => !blocked(target) && !cars.some((c) => {
+      const gap = z - c.z;
+      // At rolling speed, turn away from a stopped bumper with room ahead.
+      // Cars alongside and moving traffic still block the full crossing.
+      if (stationary(c) && gap >= 4 && overlaps(c, currentLane) && !overlaps(c, target)) return false;
+      const futureLane = predictedLane(c, 0.8);
+      const inPath = Math.max(c.lane, futureLane) > Math.min(currentLane, target) - 1.9 && Math.min(c.lane, futureLane) < Math.max(currentLane, target) + 1.9;
+      return inPath && gap > -Math.max(10, (c.speed - speed)) && gap < (c.same || stationary(c) ? 12 : Math.max(25, (Math.max(0, speed) + c.speed) * 0.9));
+    }));
     if (escape !== undefined) {
       escapeLane = escape;
       next = escape === LANE ? false : escape > 0 ? "right" : true;
