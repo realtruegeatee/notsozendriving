@@ -143,7 +143,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
   const wheels = useRef<THREE.Object3D[]>([]);
   const spot = useRef<THREE.SpotLight>(null);
   const spotTarget = useMemo(() => new THREE.Object3D(), []);
-  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, signalRevision: trafficSignalRevision(), stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false, backingOff: false, eventTimer: 0, wrongTimer: 0, oilSpin: 0, impact: createPlayerImpact() });
+  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, warp: 0, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, signalRevision: trafficSignalRevision(), stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false, backingOff: false, eventTimer: 0, wrongTimer: 0, oilSpin: 0, impact: createPlayerImpact() });
   const events = useRef<RoadEvent[]>([]);
   const hazard = useRef<HazardMemory | null>(null);
   const previousChaos = useRef<string>("");
@@ -201,6 +201,13 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       }
     }
     const ps = -game.z;
+    // A world jump (or friend teleport) bumps game.warp: snap the camera and clear pass state.
+    if (S.warp !== game.warp) {
+      S.warp = game.warp;
+      S.camYaw = game.yaw; S.camY = game.y + 3.4; S.steer = 0; S.roll = 0;
+      S.passing = false; S.blockedFor = 0;
+      input.steer = 0;
+    }
 
     if (active) {
       const k = input.keys;
