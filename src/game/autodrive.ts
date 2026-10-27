@@ -13,6 +13,7 @@ export function predictedLane(car: RoadCar, seconds: number) {
 export type Passing = boolean | "right";
 export const RIGHT_PASS = ROAD_HALF - 1;
 export const RIGHT_PASS_WAIT = 1.5;
+export const AUTOPILOT_MIN_SPEED = 3;
 export function planAutodrive(z: number, speed: number, passing: Passing, cars: RoadCar[], blockedFor = 0, dt = 0, currentLane = passing === "right" ? RIGHT_PASS : passing ? -LANE : LANE, maxSpeed = 34) {
   const overlaps = (c: RoadCar, lane: number, seconds = 0) => Math.abs(predictedLane(c, seconds) - lane) < 2.2;
   // A stopped wreck has no oncoming direction, even if it used to travel toward us.
@@ -94,7 +95,33 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
     if (c.same || c.speed < 1) targetSpeed = Math.min(targetSpeed, follow(c.speed, gap, 7));
     else if (gap < Math.max(18, (speed + c.speed) * 0.9)) targetSpeed = Math.min(targetSpeed, gap < 25 ? 0 : CREEP);
   }
-  return { lane, targetSpeed, passing: next, blockedFor: next ? 0 : waited };
+  // A stop request means the usual lanes have failed: try either roadside
+  // before accepting contact. Check the entire crossing, not only its endpoint.
+  let escapeLane = lane;
+  let pushThrough = false;
+  if (targetSpeed < AUTOPILOT_MIN_SPEED) {
+    const alternatives = [LANE, RIGHT_PASS, -LANE, -RIGHT_PASS]
+      .filter((target) => Math.abs(target - currentLane) > 0.5)
+      .sort((a, b) => Math.abs(a - currentLane) - Math.abs(b - currentLane));
+    const escape = alternatives.find((target) => !blocked(target) && escapePathClear(target));
+    if (escape !== undefined) {
+      escapeLane = escape;
+      next = escape === LANE ? false : escape > 0 ? "right" : true;
+      // Keep steering room on a last-second escape; accelerate once clear.
+      targetSpeed = Math.max(AUTOPILOT_MIN_SPEED, Math.min(maxSpeed, 8));
+    } else pushThrough = true;
+  }
+  return { lane: escapeLane, targetSpeed: Math.max(AUTOPILOT_MIN_SPEED, targetSpeed), passing: next, blockedFor: next ? 0 : waited, pushThrough };
+}
+
+/** Necessary braking never becomes parking; a blocked bumper gets a gentle push. */
+export function movingAutopilotSpeed(trafficSpeed: number, hazardSpeed: number, pushThrough: boolean) {
+  return Math.max(AUTOPILOT_MIN_SPEED, Math.min(pushThrough ? Math.max(6, trafficSpeed) : trafficSpeed, hazardSpeed));
+}
+
+/** Back off by rolling slower, not by stopping/reversing into traffic. */
+export function movingBumpSpeed(backingOff: boolean, otherSpeed: number) {
+  return backingOff ? Math.max(AUTOPILOT_MIN_SPEED, otherSpeed - 3) : Math.max(6, otherSpeed + 5);
 }
 
 export function laneOffset(x: number, z: number) { return x - roadX(z); }
