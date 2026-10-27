@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Prevent unnecessary autopilot slowing during passing and restore visible car colors
 - [x] Keep autopilot moving: find escape gaps first, push through complete blockages, and slow only when necessary
 - [x] Improve autopilot avoidance of rocks and oil splats
 - [x] Give Zen fewer cars and calm driving behaviour
