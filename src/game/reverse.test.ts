@@ -15,8 +15,8 @@ describe("manualReverse", () => {
   });
 
   it("rolls back to a stop once the brake is released", () => {
-    let v = -REVERSE_MAX;
-    for (let i = 0; i < 60 * 3; i++) v = manualReverse(v, 0, 1 / 60)!;
+    let v: number | null = -REVERSE_MAX;
+    for (let i = 0; i < 60 * 3 && v !== null; i++) v = manualReverse(v, 0, 1 / 60);
     expect(v).toBe(0);
     // Stays out of the way once stopped.
     expect(manualReverse(0, 0, 1 / 60)).toBeNull();
