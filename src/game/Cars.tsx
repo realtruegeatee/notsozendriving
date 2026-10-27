@@ -10,6 +10,7 @@ import type { CarId } from "./store";
 import { applyImpact, computeImpact, controlFactor, createPlayerImpact, massOf, NPC_MASS, stepPlayerImpact } from "./impact";
 import { aggressionProfile } from "./aggression";
 import { planAutodrive, ramTarget, stepBump, stepImpatience, stepUnstick } from "./autodrive";
+import { manualReverse } from "./reverse";
 import { maxSpeedForDistance, powerCurve } from "./speed";
 import type { Passing } from "./autodrive";
 import { flashLights, horn, trafficSignalRevision } from "./signals";
@@ -282,16 +283,22 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       v *= Math.exp(-FEEL.DRAG * dt);
       const lat = game.x - roadX(game.z);
       if (Math.abs(lat) > ROAD_HALF + 0.6) v *= Math.exp(-0.9 * dt);
-      v = reversing ? v + (-4 - v) * damp(3, dt) : clamp(v, 0, maxV);
+      if (reversing) v = v + (-4 - v) * damp(3, dt);
+      else {
+        const rev = !auto ? manualReverse(v, brk, dt) : null;
+        if (rev !== null) v = rev;
+        else v = Math.min(v, maxV);
+      }
       game.speed = v;
 
       const roadYaw = Math.atan(roadXd(game.z));
-      const rate = FEEL.TURN * S.steer * (v / (v + 5)) / (1 + v * 0.025);
+      const av = Math.abs(v);
+      const rate = FEEL.TURN * S.steer * (av / (av + 5)) / (1 + av * 0.025);
       game.yaw -= rate * dt;
       if (!auto && Math.abs(steerIn) < 0.05) {
         const target = lat >= 0 ? LANE : -LANE;
         const desired = roadYaw - clamp((target - lat) * 0.07, -0.22, 0.22);
-        game.yaw += (desired - game.yaw) * damp(FEEL.ASSIST * Math.min(1, v / 8), dt);
+        game.yaw += (desired - game.yaw) * damp(FEEL.ASSIST * Math.min(1, av / 8), dt);
       }
       // Oil slick: the car keeps spinning a little until the tyres grip again.
       game.yaw += S.oilSpin * dt; S.oilSpin *= Math.exp(-2.5 * dt);
