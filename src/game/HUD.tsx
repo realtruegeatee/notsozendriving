@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { flashLights, horn, initSignals } from "./signals";
 import { OnlinePicker, PlayersChip, RadioButton, newCode } from "./Lobby";
 import type { RoadMode } from "./Lobby";
+import { WORLD_CHOICES, warpToWorld } from "./worlds";
 import { CARS, game, hudEls, input } from "./store";
 import type { CarId } from "./store";
 import { RecordingButton } from "./RecordingButton";
@@ -186,6 +187,19 @@ function CarPicker({ car, setCar }: { car: CarId; setCar: (c: CarId) => void }) 
   );
 }
 
+function WorldPicker() {
+  return (
+    <>
+      <p className="zen-label">Worlds</p>
+      <div className="zen-seg zen-worlds">
+        {WORLD_CHOICES.map((w) => (
+          <button key={w.id} aria-label={`Warp to ${w.label}`} onClick={() => warpToWorld(w.id)}>{w.label}</button>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function DesktopPicker() {
   return (
     <>
@@ -279,6 +293,7 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
           <CarPicker car={car} setCar={pickCar} />
           <LayoutPicker layout={layout} setLayout={setLayout} />
           <AggroPicker />
+          <WorldPicker />
           <DesktopPicker />
           <button className="zen-start" onClick={start}>Start driving</button>
           <p className="zen-hint">Keyboard: WASD or arrows, N day/night, V camera view, X horn, T flash.</p>
@@ -328,9 +343,10 @@ export function HUD({ night, setNight, car, setCar, room, onJoin }: {
             <h2 className="zen-title">Paused</h2>
             <TimePicker night={night} setNight={setNight} />
             <CarPicker car={car} setCar={pickCar} />
-            <LayoutPicker layout={layout} setLayout={setLayout} />
+          <LayoutPicker layout={layout} setLayout={setLayout} />
           <AggroPicker />
-            <button className="zen-start" onClick={() => setPaused(false)}>Continue</button>
+          <WorldPicker />
+          <button className="zen-start" onClick={() => setPaused(false)}>Continue</button>
           </div>
         </div>
       )}

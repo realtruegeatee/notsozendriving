@@ -3,7 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { Component, Suspense, useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import * as THREE from "three";
-import { groundY, LANE, ROAD_HALF, roadX, roadXd, roadY, roadYd } from "./road";
+import { groundY, LANE, ROAD_HALF, roadRecovery, roadX, roadXd, roadY, roadYd } from "./road";
 import { CARS, FEEL, game, hudEls, input, net } from "./store";
 import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
@@ -143,7 +143,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
   const wheels = useRef<THREE.Object3D[]>([]);
   const spot = useRef<THREE.SpotLight>(null);
   const spotTarget = useMemo(() => new THREE.Object3D(), []);
-  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, signalRevision: trafficSignalRevision(), stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false, backingOff: false, eventTimer: 0, wrongTimer: 0, oilSpin: 0, impact: createPlayerImpact() });
+  const st = useRef({ steer: 0, roll: 0, camYaw: 0, camY: 3, frame: 0, init: false, warp: 0, contactUntil: 0, passing: false as Passing, blockedFor: 0, signalCooldown: 0, signalRevision: trafficSignalRevision(), stuckFor: 0, reverseLeft: 0, impatience: 0, ramming: false, backingOff: false, eventTimer: 0, wrongTimer: 0, oilSpin: 0, impact: createPlayerImpact() });
   const events = useRef<RoadEvent[]>([]);
   const hazard = useRef<HazardMemory | null>(null);
   const previousChaos = useRef<string>("");
@@ -201,6 +201,13 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       }
     }
     const ps = -game.z;
+    // A world jump (or friend teleport) bumps game.warp: snap the camera and clear pass state.
+    if (S.warp !== game.warp) {
+      S.warp = game.warp;
+      S.camYaw = game.yaw; S.camY = game.y + 3.4; S.steer = 0; S.roll = 0;
+      S.passing = false; S.blockedFor = 0;
+      input.steer = 0;
+    }
 
     if (active) {
       const k = input.keys;
@@ -287,7 +294,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       v -= FEEL.BRAKE * brk * dt;
       v *= Math.exp(-FEEL.DRAG * dt);
       const lat = game.x - roadX(game.z);
-      if (!auto && Math.abs(lat) > ROAD_HALF + 0.6) v *= Math.exp(-0.9 * dt);
+      if (!auto && Math.abs(lat) > ROAD_HALF + 0.6) v *= Math.exp(-0.35 * dt);
       if (reversing) v = v + (-4 - v) * damp(3, dt);
       else {
         const rev = !auto ? manualReverse(v, brk, dt) : null;
@@ -308,6 +315,8 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const desired = roadYaw - clamp((target - lat) * 0.07, -0.22, 0.22);
         game.yaw += (desired - game.yaw) * damp(FEEL.ASSIST * Math.min(1, av / 8), dt);
       }
+      // Off the tarmac: steer straight back onto the road immediately, even under input.
+      if (!auto && Math.abs(lat) > ROAD_HALF + 0.6) game.yaw = roadRecovery(game.z, lat, game.yaw, dt);
       // Oil slick: the car keeps spinning a little until the tyres grip again.
       game.yaw += S.oilSpin * dt; S.oilSpin *= Math.exp(-2.5 * dt);
       const imp = stepPlayerImpact(S.impact, dt);
