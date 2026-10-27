@@ -31,7 +31,7 @@ function smooth(t: number) {
 }
 
 // Biomes change every few hundred metres, blending smoothly between neighbours.
-export const BIOMES = ["meadow", "forest", "desert", "alpine", "lake"] as const;
+export const BIOMES = ["meadow", "forest", "desert", "alpine", "lake", "tundra", "neon", "volcanic", "tropical"] as const;
 export type Biome = (typeof BIOMES)[number];
 export type BiomeWeights = Record<Biome, number>;
 export const BIOME_LEN = 900;
@@ -45,7 +45,7 @@ function segments(z: number) {
   return [[i, 1 - mix], [i + 1, mix]] as const;
 }
 export function biomeWeights(z: number): BiomeWeights {
-  const w: BiomeWeights = { meadow: 0, forest: 0, desert: 0, alpine: 0, lake: 0 };
+  const w = Object.fromEntries(BIOMES.map((b) => [b, 0])) as BiomeWeights;
   for (const [i, m] of segments(z)) w[biomeOf(i)] += m;
   return w;
 }
@@ -53,6 +53,7 @@ export function biomeWeights(z: number): BiomeWeights {
 export function lakeAmount(z: number, u: number) {
   let a = 0;
   for (const [i, m] of segments(z)) if (biomeOf(i) === "lake" && Math.sign(u) === lakeSide(i)) a += m;
+    else if (biomeOf(i) === "tropical" && Math.sign(u) === lakeSide(i) && Math.abs(u) > 22) a += m; // open sea beyond the beach
   return a;
 }
 export const WATER_DROP = 0.45;
@@ -65,9 +66,10 @@ export function groundY(z: number, u: number) {
   const ditch = -0.5 * Math.min((a - 6.5) / 2, 1);
   const t = smooth((a - 9) / 40);
   const w = biomeWeights(z);
-  const hills = (5 + 4 * Math.sin(z * 0.013 + u * 0.03) + 3 * Math.sin(z * 0.031 - u * 0.07)) * (1 - 0.65 * w.desert) * (1 + 1.5 * w.alpine);
+  const hills = (5 + 4 * Math.sin(z * 0.013 + u * 0.03) + 3 * Math.sin(z * 0.031 - u * 0.07)) * (1 - 0.65 * w.desert - 0.9 * w.neon - 0.5 * w.tropical) * (1 + 1.5 * w.alpine + 0.6 * w.tundra);
+  const crags = w.volcanic * smooth((a - 14) / 30) * (6 + 9 * Math.abs(Math.sin(z * 0.05 + u * 0.11)));
   const peaks = w.alpine * smooth((a - 45) / 100) * (28 + 18 * Math.sin(z * 0.011 + u * 0.023));
-  const land = base + ditch + t * hills + peaks;
+  const land = base + ditch + t * hills + peaks + crags;
   const lake = lakeAmount(z, u) * smooth((a - 11) / 6);
   return land + (base - WATER_DROP - 1.6 - land) * lake;
 }
