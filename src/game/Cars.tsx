@@ -516,20 +516,15 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           const hit = computeImpact(Math.max(closing, Math.abs(latPush) > 0.6 ? game.speed * 0.5 : 0), Math.abs(latPush), massOf(car), NPC_MASS, latPush);
           if (!wasCrashing && freshContact) applyImpact(S.impact, hit);
           if (launched && n.crashMotion) { n.crashMotion.lateral *= hit.npcThrow; n.crashMotion.spin *= hit.npcThrow; n.crashMotion.vertical *= Math.sqrt(hit.npcThrow); }
-          if (hit.controlLoss > 0 && freshContact) game.speed = Math.max(auto ? AUTOPILOT_MIN_SPEED : 0, game.speed - hit.playerSpeedLoss * 0.5);
           if (launched) {
             n.reaction = "crash"; n.reactionLeft = 7; n.passing = false;
           }
-          if (launched && n.shove > 0) {
-            // Launched car: the player plows through and barely slows.
-            game.speed *= 0.88;
-          } else if (n.lane > 0 && game.speed > n.v && !((n.stunLeft ?? 0) > 0)) {
-            // Push it: hand momentum to the car ahead instead of just stopping dead.
+          // The player never loses speed on contact: the other car takes all of it.
+          if (!launched && n.lane > 0 && game.speed > n.v && !((n.stunLeft ?? 0) > 0)) {
+            // Push it: hand momentum to the car ahead instead of slowing down.
             const share = (game.speed - n.v) * 0.6;
             n.v += share; n.s += Math.min(1.5, share * 0.08);
-            game.speed -= share * (auto ? 0.15 : 0.5);
-          } else if (auto) game.speed *= n.lane > 0 ? 0.97 : 0.7;
-          else game.speed *= n.lane > 0 ? 0.85 : 0.3;
+          }
           // On autopilot the car holds its line: only a nudge of the contact push applies.
           const firmness = auto && hit.controlLoss === 0 ? 0.25 : 1;
           game.x += push.x * firmness; game.z += push.z * firmness;
