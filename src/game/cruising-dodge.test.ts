@@ -34,3 +34,8 @@ it("rejects a shoulder into which another car is already merging", () => {
 it("holds a clear committed pass midway through instead of switching sides", () => {
   expect(cruisingDodge(0, 55, 0.1, [{ z: -100, lane: LANE, speed: 15, same: true }], -LANE)?.lane).toBe(-LANE);
 });
+it("threads a free line between lanes when every named lane is blocked", () => {
+  const cars = [LANE, -LANE, RIGHT_PASS, -RIGHT_PASS].map((lane) => ({ z: -60, lane, speed: 0, same: true }));
+  const dodge = cruisingDodge(0, 30, LANE, cars.filter((c) => c.lane !== LANE).concat({ z: -60, lane: LANE, speed: 0, same: true }));
+  if (dodge) expect([LANE, -LANE, RIGHT_PASS, -RIGHT_PASS]).not.toContain(dodge.lane);
+});
