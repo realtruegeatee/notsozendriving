@@ -29,7 +29,7 @@ export function impactSpeed(playerSpeed: number, car: CollisionNpc) {
  * instead of bulldozing a car that now matches its own speed.
  */
 export function shovedNpcSpeed(v: number, share: number, base: number, wreck: boolean) {
-  const cap = wreck ? Math.min(v + 2, 4) : Math.max(v, base);
+  const cap = wreck ? 4 : Math.max(v, base);
   return Math.max(0, Math.min(cap, v + Math.max(0, share)));
 }
 /** A crash may only start where the player can actually see it: just behind the car to ~140 m ahead. */
