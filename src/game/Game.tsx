@@ -8,6 +8,27 @@ import { World, lampGlowMat, lampHeadMat } from "./World";
 import { game } from "./store";
 import type { CarId } from "./store";
 import { hasNpcTraffic } from "./multiplayer-math";
+import { LOOKS, worldMood } from "./worlds";
+
+/** Tints sky and fog toward the current world's look. */
+function WorldSky({ night }: { night: boolean }) {
+  const ref = useRef<THREE.Mesh>(null);
+  const scene = useThree((s) => s.scene);
+  const base = useMemo(() => new THREE.Color(night ? PALETTE.night.fog : PALETTE.day.fog), [night]);
+  const mat = useMemo(() => new THREE.MeshBasicMaterial({ side: THREE.BackSide, transparent: true, opacity: 0, fog: false, depthWrite: false }), []);
+  const c = useMemo(() => new THREE.Color(), []);
+  useFrame(({ camera }) => {
+    ref.current?.position.copy(camera.position);
+    let total = 0;
+    c.setRGB(0, 0, 0);
+    for (const [b, v] of worldMood(-game.z)) { const l = LOOKS[b]!; c.r += new THREE.Color(night ? l.night : l.sky).r * v; c.g += new THREE.Color(night ? l.night : l.sky).g * v; c.b += new THREE.Color(night ? l.night : l.sky).b * v; total += v; }
+    if (total > 0) c.multiplyScalar(1 / total);
+    mat.color.copy(c);
+    mat.opacity = Math.min(1, total) * 0.8;
+    if (scene.fog) (scene.fog as THREE.Fog).color.copy(base).lerp(c, Math.min(1, total));
+  });
+  return <mesh ref={ref} material={mat} renderOrder={-1}><sphereGeometry args={[450, 24, 12]} /></mesh>;
+}
 
 const PALETTE = {
   day: { top: "#7fb0d6", horizon: "#f3dcc0", fog: "#ecd9c0", fogFar: 330, amb: 0.55, sun: 2.2, sunColor: "#fff0d8" },
@@ -77,6 +98,7 @@ export function Game({ night, car, room, name }: { night: boolean; car: CarId; r
     <Canvas shadows dpr={[1, 1.75]} camera={{ fov: 60, near: 0.1, far: 600, position: [0, 3, 8] }} gl={{ antialias: true }}>
       <SkyDome night={night} />
       <Atmosphere night={night} />
+      <WorldSky night={night} />
       <Suspense fallback={null}>
         <World />
         <Traffic car={car} traffic={hasNpcTraffic(room)} />

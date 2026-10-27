@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { CHUNK, ROAD_HALF, WATER_DROP, biomeWeights, groundY, hash, lakeAmount, roadX, roadY } from "./road";
 import { game } from "./store";
+import { weatherAt, worldMood } from "./worlds";
 
 function makeRoadTexture() {
   const c = document.createElement("canvas");
@@ -40,6 +41,11 @@ const sandB = new THREE.Color("#c9a26a");
 const rockC = new THREE.Color("#8d8a83");
 const snow = new THREE.Color("#f3f2ee");
 const shore = new THREE.Color("#cdbd93");
+const tundraG = new THREE.Color("#e8eef0");
+const neonG = new THREE.Color("#2a2638");
+const ashG = new THREE.Color("#2e2724");
+const lavaG = new THREE.Color("#d2481c");
+const tropicG = new THREE.Color("#5fbf5a");
 const tmp = new THREE.Color();
 
 function buildChunk(k: number) {
@@ -88,6 +94,10 @@ function buildChunk(k: number) {
         col.lerp(tmp.copy(sandA).lerp(sandB, t), w.desert);
         const h = groundY(z, u) - roadY(z);
         if (w.alpine > 0) col.lerp(h > 22 ? snow : rockC, w.alpine * Math.min(1, Math.max(0, (h - 6) / 8)));
+        col.lerp(tundraG, w.tundra * 0.9);
+        col.lerp(neonG, w.neon);
+        col.lerp(hash(i * 13 + j * 5 + k * 7) > 0.88 ? lavaG : ashG, w.volcanic);
+        col.lerp(Math.abs(u) < 14 ? sandA : tropicG, w.tropical);
         if (lakeAmount(z, u) > 0.2 && h < 0) col.lerp(shore, 0.7);
       }
       gc.push(col.r, col.g, col.b);
@@ -143,6 +153,14 @@ const LAMP_STEP = 50;
 const MAXT = 200;
 const dryFoliage = ["#a8a66a", "#8f9a5a", "#c4b27a"].map((c) => new THREE.Color(c));
 const pineFoliage = ["#3f6b4c", "#4c7a57", "#2f5a44"].map((c) => new THREE.Color(c));
+const frostFoliage = ["#dfe8e6", "#b9cdc6", "#9fb5ad"].map((c) => new THREE.Color(c));
+const palmFoliage = ["#2fae5a", "#4cc46a", "#7bd36a"].map((c) => new THREE.Color(c));
+const neonFoliage = ["#ff4fa3", "#3fe0ff", "#b36bff"].map((c) => new THREE.Color(c));
+const deadFoliage = new THREE.Color("#3a302b");
+const TOWER_STEP = 13;
+const MAXB = 70;
+const signColors = ["#ff3fa0", "#2fe6ff", "#c86bff", "#ffd23f"].map((c) => new THREE.Color(c));
+const towerColors = ["#1d1a2b", "#28233a", "#151321"].map((c) => new THREE.Color(c));
 const MOUNT_STEP = 90;
 const MAXM = 24;
 const foliage = ["#7fa67a", "#9bbf7a", "#5f8f6a", "#d9a86c", "#c98a6b", "#a8bf86"].map((c) => new THREE.Color(c));
@@ -157,6 +175,8 @@ function Scenery() {
   const glows = useRef<THREE.InstancedMesh>(null);
   const mounts = useRef<THREE.InstancedMesh>(null);
   const caps = useRef<THREE.InstancedMesh>(null);
+  const towers = useRef<THREE.InstancedMesh>(null);
+  const signs = useRef<THREE.InstancedMesh>(null);
   const last = useRef(-9999);
   const d = useMemo(() => new THREE.Object3D(), []);
 
@@ -172,7 +192,7 @@ function Scenery() {
       for (const side of [-1, 1]) {
         const z = -i * TREE_STEP - hash(i + side * 3) * 4;
         const w = biomeWeights(z);
-        const skip = 0.3 - 0.28 * w.forest + 0.62 * w.desert + 0.3 * w.alpine;
+        const skip = 0.3 - 0.28 * w.forest + 0.62 * w.desert + 0.3 * w.alpine + 0.75 * w.neon + 0.5 * w.volcanic - 0.1 * w.tundra;
         if (hash(i * 2 + side) < skip) continue;
         const u = side * (10 + hash(i * 3 + side * 7) * (55 - 30 * w.forest));
         if (lakeAmount(z, u) > 0.3 && Math.abs(u) > 12) continue;
@@ -185,7 +205,7 @@ function Scenery() {
         d.position.set(x, y + 2.6 * sc, z); d.updateMatrix(); leafA.current!.setMatrixAt(t, d.matrix);
         d.position.set(x, y + 3.9 * sc, z); d.scale.setScalar(sc * 0.7); d.updateMatrix(); leafB.current!.setMatrixAt(t, d.matrix);
         const pick = hash(i * 7 + side);
-        const c = w.desert > 0.5 ? dryFoliage[Math.floor(pick * dryFoliage.length)]! : w.alpine > 0.5 || w.forest > 0.5 ? pineFoliage[Math.floor(pick * pineFoliage.length)]! : foliage[Math.floor(pick * foliage.length)]!;
+        const c = w.volcanic > 0.5 ? deadFoliage : w.tundra > 0.5 ? frostFoliage[Math.floor(pick * frostFoliage.length)]! : w.tropical > 0.5 ? palmFoliage[Math.floor(pick * palmFoliage.length)]! : w.neon > 0.5 ? neonFoliage[Math.floor(pick * neonFoliage.length)]! : w.desert > 0.5 ? dryFoliage[Math.floor(pick * dryFoliage.length)]! : w.alpine > 0.5 || w.forest > 0.5 ? pineFoliage[Math.floor(pick * pineFoliage.length)]! : foliage[Math.floor(pick * foliage.length)]!;
         leafA.current!.setColorAt(t, c); leafB.current!.setColorAt(t, c);
         t++;
         if (t >= MAXT) break;
@@ -235,6 +255,28 @@ function Scenery() {
     }
     for (const m of [mounts, caps]) { m.current!.count = mc; m.current!.instanceMatrix.needsUpdate = true; }
     if (mounts.current!.instanceColor) mounts.current!.instanceColor.needsUpdate = true;
+    // neon city towers with glowing sign strips
+    let b = 0;
+    for (let i = Math.floor(from / TOWER_STEP); i < to / TOWER_STEP && b < MAXB; i++) {
+      for (const side of [-1, 1]) {
+        const z = -i * TOWER_STEP;
+        const w = biomeWeights(z);
+        if (w.neon < 0.4 || hash(i * 41 + side) > 0.85 * w.neon || b >= MAXB) continue;
+        const u = side * (16 + hash(i * 43 + side) * 40);
+        const h = 12 + hash(i * 47 + side) * 45;
+        const wd = 6 + hash(i * 53 + side) * 6;
+        const x = roadX(z) + u, y = groundY(z, u);
+        d.rotation.set(0, 0, 0);
+        d.scale.set(wd, h, wd); d.position.set(x, y + h / 2, z); d.updateMatrix();
+        towers.current!.setMatrixAt(b, d.matrix);
+        towers.current!.setColorAt(b, towerColors[Math.floor(hash(i * 59) * 3)]!);
+        d.scale.set(wd * 1.02, 0.6, wd * 1.02); d.position.set(x, y + h * (0.4 + hash(i * 61) * 0.5), z); d.updateMatrix();
+        signs.current!.setMatrixAt(b, d.matrix);
+        signs.current!.setColorAt(b, signColors[Math.floor(hash(i * 67 + side) * 4)]!);
+        b++;
+      }
+    }
+    for (const m of [towers, signs]) { m.current!.count = b; m.current!.instanceMatrix.needsUpdate = true; if (m.current!.instanceColor) m.current!.instanceColor.needsUpdate = true; }
     // lamps
     let l = 0;
     for (let i = Math.floor(from / LAMP_STEP); i < to / LAMP_STEP && l < 14; i++) {
@@ -279,6 +321,14 @@ function Scenery() {
         <coneGeometry args={[1, 1, 6]} />
         <meshStandardMaterial color="#f3f2ee" roughness={1} flatShading />
       </instancedMesh>
+      <instancedMesh ref={towers} args={[undefined, undefined, MAXB]} castShadow frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial roughness={0.8} />
+      </instancedMesh>
+      <instancedMesh ref={signs} args={[undefined, undefined, MAXB]} frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshBasicMaterial toneMapped={false} />
+      </instancedMesh>
       <instancedMesh ref={poles} args={[undefined, undefined, 14]} castShadow frustumCulled={false}>
         <boxGeometry args={[0.18, 5.6, 0.18]} />
         <meshStandardMaterial color="#3d4248" roughness={0.6} metalness={0.4} />
@@ -293,6 +343,46 @@ function Scenery() {
   );
 }
 
+const DROPS = 1200, BOX = 40, HIGH = 26;
+const WEATHER = {
+  snow: { color: new THREE.Color("#ffffff"), size: 0.22, fall: 2.5, drift: 1.2 },
+  rain: { color: new THREE.Color("#9fc8ff"), size: 0.1, fall: 22, drift: 0.2 },
+  ash: { color: new THREE.Color("#ff8a5a"), size: 0.16, fall: 1.2, drift: 1.8 },
+};
+/** Falling snow, rain or glowing ash around the camera, faded in by world. */
+function Weather() {
+  const geo = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    const p = new Float32Array(DROPS * 3);
+    for (let i = 0; i < DROPS; i++) { p[i * 3] = (Math.random() - 0.5) * BOX * 2; p[i * 3 + 1] = Math.random() * HIGH; p[i * 3 + 2] = (Math.random() - 0.5) * BOX * 2; }
+    g.setAttribute("position", new THREE.BufferAttribute(p, 3));
+    return g;
+  }, []);
+  const mat = useMemo(() => new THREE.PointsMaterial({ size: 0.2, transparent: true, opacity: 0, depthWrite: false, fog: false }), []);
+  const pts = useRef<THREE.Points>(null);
+  useFrame(({ camera, clock }, dt) => {
+    const w = weatherAt(-game.z);
+    const kind = (Object.keys(w) as (keyof typeof w)[]).reduce((a, k) => (w[k] > w[a] ? k : a), "snow");
+    const amt = w[kind];
+    mat.opacity = amt * 0.85;
+    pts.current!.visible = amt > 0.02;
+    if (!pts.current!.visible) return;
+    const look = WEATHER[kind];
+    mat.color.copy(look.color); mat.size = look.size;
+    pts.current!.position.set(camera.position.x, camera.position.y - 8, camera.position.z);
+    const a = geo.attributes.position!.array as Float32Array, t = clock.elapsedTime, step = Math.min(dt, 0.05);
+    for (let i = 0; i < DROPS; i++) {
+      let y = a[i * 3 + 1]! - look.fall * step;
+      if (y < 0) y += HIGH;
+      a[i * 3 + 1] = y;
+      a[i * 3] = ((a[i * 3]! + Math.sin(t + i) * look.drift * step + BOX) % (BOX * 2) + BOX * 2) % (BOX * 2) - BOX;
+    }
+    geo.attributes.position!.needsUpdate = true;
+  });
+  return <points ref={pts} geometry={geo} material={mat} frustumCulled={false} />;
+}
+
+const lakeBlue = new THREE.Color("#5d93a8"), seaBlue = new THREE.Color("#2fc2c8");
 export function World() {
   const [base, setBase] = useState(0);
   const roadMat = useMemo(() => new THREE.MeshStandardMaterial({ map: makeRoadTexture(), roughness: 0.92 }), []);
@@ -301,6 +391,8 @@ export function World() {
   useFrame(() => {
     const b = Math.floor(-game.z / CHUNK);
     if (b !== base) setBase(b);
+    const sea = worldMood(-game.z).find(([k]) => k === "tropical")?.[1] ?? 0;
+    (waterMat as THREE.MeshStandardMaterial).color.copy(lakeBlue).lerp(seaBlue, sea);
   });
   const ks = [];
   for (let k = base - 1; k <= base + 5; k++) ks.push(k);
@@ -308,6 +400,7 @@ export function World() {
     <>
       {ks.map((k) => <Chunk key={k} k={k} roadMat={roadMat} groundMat={groundMat} waterMat={waterMat} />)}
       <Scenery />
+      <Weather />
     </>
   );
 }
