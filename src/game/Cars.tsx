@@ -16,7 +16,7 @@ import type { Passing } from "./autodrive";
 import { flashLights, horn, trafficSignalRevision } from "./signals";
 import { chooseSporadicEvent, chooseTrafficReaction, npcTargetSpeed, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, signalLossMotion, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
-import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact, crashVisible } from "./npc-collision";
+import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact, crashVisible, shovedNpcSpeed } from "./npc-collision";
 import { canDriveAgain } from "./crash-physics";
 import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import type { DrivingNpc } from "./npc-driving";
@@ -521,9 +521,11 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           }
           // The player never loses speed on contact: the other car takes all of it.
           if (!launched && n.lane > 0 && game.speed > n.v && !((n.stunLeft ?? 0) > 0)) {
-            // Push it: hand momentum to the car ahead instead of slowing down.
+            // Push it: hand momentum to the car ahead instead of slowing down,
+            // capped so it stays slower than us and the planner keeps dodging
+            // it rather than pushing it along at a matched speed.
             const share = (game.speed - n.v) * 0.6;
-            n.v += share; n.s += Math.min(1.5, share * 0.08);
+            n.v = shovedNpcSpeed(n.v, share, n.base, n.crashAge >= 0); n.s += Math.min(1.5, share * 0.08);
           }
           // On autopilot the car holds its line: only a nudge of the contact push applies, hard hits included.
           const firmness = auto ? 0.25 : 1;

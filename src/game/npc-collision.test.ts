@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { carContact } from "./multiplayer-math";
-import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact, crashVisible, STUN_FOR } from "./npc-collision";
+import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact, crashVisible, shovedNpcSpeed, STUN_FOR } from "./npc-collision";
 import type { CollisionNpc } from "./npc-collision";
 import { LANE, groundY, roadX, roadXd } from "./road";
 import { createCrashMotion, stepCrashMotion } from "./crash-physics";
@@ -228,4 +228,19 @@ it("NPC collisions in sight still wreck one car", () => {
   const a: CollisionNpc = npc(100, 25), b: CollisionNpc = npc(102, 5);
   expect(resolveNpcCollision(a, b, crashVisible(50, a) || crashVisible(50, b))).toBe(true);
   expect(a.crashAge >= 0 || b.crashAge >= 0).toBe(true);
+});
+it("a shoved car stays slower than the pusher so the autopilot keeps dodging it", () => {
+  // Autopilot at 55 m/s rear-ends a car cruising at 20 m/s; its base is 20.
+  const pushed = shovedNpcSpeed(20, (55 - 20) * 0.6, 20, false);
+  expect(pushed).toBe(20);
+  // Repeated contact frames never lift it above its base, so the closing
+  // speed stays positive and the dodge planner still sees a threat.
+  expect(shovedNpcSpeed(pushed, (55 - pushed) * 0.6, 20, false)).toBe(20);
+});
+it("a shoved wreck only creeps instead of being launched to the pusher's speed", () => {
+  expect(shovedNpcSpeed(0, 33, 20, true)).toBe(4);
+  expect(shovedNpcSpeed(4, 30, 20, true)).toBe(4);
+});
+it("a slow car may be pushed up to but not past its cruising speed", () => {
+  expect(shovedNpcSpeed(5, 6, 20, false)).toBe(11);
 });
