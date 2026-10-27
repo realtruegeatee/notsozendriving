@@ -55,4 +55,4 @@
 - [x] Autopilot rear-hit car stops, gets shoved aside, resumes after 3 s
 
 - [x] Chaos level: pileups, road rage, oil/rocks, wrong-way drivers
-- [ ] Entirely new worlds (distinct environments) — awaiting user's pick
+- [x] Entirely new worlds: tundra, neon city, volcanic wasteland, tropical coast with weather
