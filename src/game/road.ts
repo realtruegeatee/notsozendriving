@@ -53,7 +53,7 @@ export function biomeWeights(z: number): BiomeWeights {
 export function lakeAmount(z: number, u: number) {
   let a = 0;
   for (const [i, m] of segments(z)) if (biomeOf(i) === "lake" && Math.sign(u) === lakeSide(i)) a += m;
-    else if (biomeOf(i) === "tropical" && Math.sign(u) === lakeSide(i) && Math.abs(u) > 22) a += m; // open sea beyond the beach
+    else if (biomeOf(i) === "tropical" && Math.sign(u) === lakeSide(i)) a += m; // open sea beside the beach
   return a;
 }
 export const WATER_DROP = 0.45;
