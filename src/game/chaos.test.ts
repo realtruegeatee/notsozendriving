@@ -41,7 +41,7 @@ it("zen turns all extra chaos off", () => {
 });
 it("mayhem is more frequent and harder than normal", () => {
   const n = chaosProfile("normal"), m = chaosProfile("mayhem");
-  expect(m.eventGap).toBeLessThan(n.eventGap);
+  expect(m.wrongWayGap).toBeLessThan(n.wrongWayGap);
   expect(m.ragePerSec).toBeGreaterThan(n.ragePerSec);
   expect(pileupSeverity(15, m)).toBeGreaterThan(pileupSeverity(15, n));
 });
@@ -52,14 +52,18 @@ it("rage starts only for a car behind the player and ends after a while or on cr
   expect(stepRage(5, 30, true, 0, 1, p)).toBe(0);
   expect(stepRage(0.5, 30, false, 0.99, 1, p)).toBe(0);
 });
-it("events spawn ahead and are hit only nearby", () => {
-  const ev: RoadEvent[] = [];
-  stepRoadEvents(ev, 100, 0, 20, chaosProfile("normal"), () => 0.1);
-  const e = ev[0]!;
-  expect(e.s).toBeGreaterThan(200);
-  expect(hitsEvent(e, e.s, e.offset)).toBe(true);
-  expect(hitsEvent(e, e.s + 20, e.offset)).toBe(false);
-});
+for (const mode of ["zen", "normal", "mayhem"] as const) {
+  it(`${mode} removes existing oil and rocks and never spawns road obstacles`, () => {
+    const ev: RoadEvent[] = [
+      { kind: "oil", s: 200, offset: 2, radius: 2.6 },
+      { kind: "rock", s: 250, offset: 0, radius: 1.3 },
+    ];
+    expect(stepRoadEvents(ev, 100, 100, 20, chaosProfile(mode), () => 0.1)).toBe(0);
+    expect(ev).toEqual([]);
+    for (let i = 0; i < 100; i++) stepRoadEvents(ev, 100 + i, 100, 20, chaosProfile(mode), () => 0.9);
+    expect(ev).toEqual([]);
+  });
+}
 it("a flying wreck knocks a driving car into a pileup", () => {
   const wreck = { s: 100, lane: 1.8, v: 18, crashAge: 0.3, impactOffset: 0, contactLeft: 0, crashMotion: createCrashMotion(1.8, 18, 1, 1) };
   wreck.crashMotion.offset = 1.8;
