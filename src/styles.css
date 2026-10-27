@@ -168,6 +168,11 @@ body { font-family: var(--font-body); overscroll-behavior: none; }
 .zen-cars button { border-top: 2px solid var(--ink); border-left: 2px solid var(--ink); }
 .zen-cars button:nth-child(-n+4) { border-top: none; }
 .zen-cars button:nth-child(4n+1) { border-left: none; }
+.zen-worlds { grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); }
+.zen-worlds button + button { border-left: none; }
+.zen-worlds button { border-top: 2px solid var(--ink); border-left: 2px solid var(--ink); }
+.zen-worlds button:nth-child(-n+3) { border-top: none; }
+.zen-worlds button:nth-child(3n+1) { border-left: none; }
 .zen-mini { display: flex; gap: 3px; align-items: center; height: 14px; }
 .zen-mini i { display: block; border: 1.5px solid currentColor; }
 .zen-start { margin-top: 1.2rem; width: 100%; padding: 0.85rem; background: var(--ink); color: var(--paper); border-radius: 3px;
