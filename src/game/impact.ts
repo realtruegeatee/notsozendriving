@@ -32,7 +32,7 @@ export function computeImpact(closing: number, sideways: number, playerMass: num
     playerLateral: dir * dv * (0.25 + s * 0.6),
     playerSpin: -dir * Math.min(2.5, hard * playerShare * (0.04 + s * 0.12)),
     controlLoss: hard < 2 ? 0 : Math.min(3, hard * playerShare * 0.12 * (0.6 + s)),
-    npcThrow: Math.max(0.5, Math.min(2.2, (playerMass / total) * 2)),
+    npcThrow: Math.max(1.4, Math.min(3.2, (playerMass / total) * 2.8)),
   };
 }
 
