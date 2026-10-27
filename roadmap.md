@@ -60,5 +60,5 @@
 
 - [x] Chaos level: pileups, road rage, oil/rocks, wrong-way drivers
 - [x] Entirely new worlds: tundra, neon city, volcanic wasteland, tropical coast with weather
-- [ ] Recover to the road immediately when the car goes off-road
-- [ ] Make worlds change less often (longer biome stretches)
+- [x] Recover to the road immediately when the car goes off-road
+- [x] Make worlds change less often (longer biome stretches)
