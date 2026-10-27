@@ -22,6 +22,16 @@ function pose(car: CollisionNpc) {
 export function impactSpeed(playerSpeed: number, car: CollisionNpc) {
   return car.lane > 0 ? Math.max(0, playerSpeed - car.v) : playerSpeed + car.v;
 }
+/**
+ * Speed a pushed car keeps after the player hands it momentum. It must stay
+ * clearly slower than the pusher (capped at its cruising speed; a wreck only
+ * creeps) so the closing speed stays nonzero and the autopilot keeps dodging
+ * instead of bulldozing a car that now matches its own speed.
+ */
+export function shovedNpcSpeed(v: number, share: number, base: number, wreck: boolean) {
+  const cap = wreck ? Math.min(v + 2, 4) : Math.max(v, base);
+  return Math.max(0, Math.min(cap, v + Math.max(0, share)));
+}
 /** A crash may only start where the player can actually see it: just behind the car to ~140 m ahead. */
 export function crashVisible(playerS: number, car: CollisionNpc) {
   const ds = car.s - playerS;
