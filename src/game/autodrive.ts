@@ -124,9 +124,9 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   return { lane: escapeLane, targetSpeed: Math.max(AUTOPILOT_MIN_SPEED, targetSpeed), passing: next, blockedFor: next ? 0 : waited, pushThrough };
 }
 
-/** Necessary braking never becomes parking; a blocked bumper gets a gentle push. */
-export function movingAutopilotSpeed(trafficSpeed: number, hazardSpeed: number, pushThrough: boolean) {
-  return Math.max(AUTOPILOT_MIN_SPEED, Math.min(pushThrough ? Math.max(6, trafficSpeed) : trafficSpeed, hazardSpeed));
+/** Steering plans still choose gaps, but traffic must not lower cruising speed. */
+export function movingAutopilotSpeed(_trafficSpeed: number, _hazardSpeed: number, _pushThrough: boolean, cruiseSpeed = 34) {
+  return cruiseSpeed;
 }
 
 /** Back off by rolling slower, not by stopping/reversing into traffic. */

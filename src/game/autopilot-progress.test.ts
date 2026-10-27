@@ -7,7 +7,7 @@ it("never asks to stop even with every crossing blocked by wrecks", () => {
   const plan = planAutodrive(0, 10, false, cars);
   expect(plan.targetSpeed).toBe(3);
   expect(plan.pushThrough).toBe(true);
-  expect(movingAutopilotSpeed(plan.targetSpeed, Infinity, plan.pushThrough)).toBe(6);
+  expect(movingAutopilotSpeed(plan.targetSpeed, Infinity, plan.pushThrough)).toBe(34);
 });
 
 it("chooses a clear left roadside instead of pushing a blocked passing lane", () => {
@@ -27,9 +27,10 @@ it("chooses a clear left roadside instead of pushing a blocked passing lane", ()
   expect(planAutodrive(-20, 8, held.passing, [], 0, 0.05, -RIGHT_PASS).lane).toBe(LANE);
 });
 
-it("slows for an unavoidable hazard without ever requesting a standstill", () => {
-  expect(movingAutopilotSpeed(34, 0, false)).toBe(3);
-  expect(movingAutopilotSpeed(34, 12, false)).toBe(12);
+it("keeps cruising speed instead of braking for traffic, hazards or a blocked road", () => {
+  expect(movingAutopilotSpeed(3, 0, false)).toBe(34);
+  expect(movingAutopilotSpeed(15, 12, false)).toBe(34);
+  expect(movingAutopilotSpeed(3, 0, true, 300 / 3.6)).toBe(300 / 3.6);
 });
 
 it("does not slow down on clear road", () => {
