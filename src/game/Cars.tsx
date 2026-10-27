@@ -9,7 +9,7 @@ import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
 import { applyImpact, computeImpact, controlFactor, createPlayerImpact, massOf, NPC_MASS, stepPlayerImpact } from "./impact";
 import { aggressionProfile } from "./aggression";
-import { planAutodrive, ramTarget, stepBump, stepImpatience, stepUnstick } from "./autodrive";
+import { AUTOPILOT_MIN_SPEED, movingAutopilotSpeed, movingBumpSpeed, planAutodrive, ramTarget, stepBump, stepImpatience } from "./autodrive";
 import { manualReverse } from "./reverse";
 import { maxSpeedForDistance, powerCurve } from "./speed";
 import type { Passing } from "./autodrive";
@@ -244,15 +244,14 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         });
         const dodge = autopilotHazardPlan(events.current, -game.z, offset, game.speed, hazard.current, blocked);
         hazard.current = dodge.memory;
-        const targetSpeed = Math.min(plan.targetSpeed, dodge.speed);
+        const targetSpeed = movingAutopilotSpeed(plan.targetSpeed, dodge.speed, plan.pushThrough);
         const desired = Math.atan2(game.x - roadX(lookZ) - (dodge.target ?? plan.lane), game.z - lookZ);
         steerIn = clamp((game.yaw - desired) * 5, -1, 1);
         thr = clamp((targetSpeed - game.speed) * 0.45, 0, 1);
         brk = clamp((game.speed - targetSpeed) * 0.5, 0, 1);
-        const u = stepUnstick(S.stuckFor, S.reverseLeft, game.speed, targetSpeed, dt);
-        S.stuckFor = u.stuckFor; S.reverseLeft = u.reverseLeft; reversing = u.reversing;
-        if (reversing) { thr = 0; brk = 0; steerIn = 0; }
-        if (u.retryPass) { S.passing = true; S.blockedFor = 0; }
+        // Recovery stays forward-moving: the planner seeks roadside gaps,
+        // then uses contact only when every crossing is blocked.
+        S.stuckFor = 0; S.reverseLeft = 0;
         const lat0 = game.x - roadX(game.z);
         const target = ramTarget(game.z, lat0, cars);
         // Only lose patience when no pass is possible.
@@ -266,14 +265,15 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           const ramDesired = Math.atan2(lat0 - target.lane, game.z - target.z);
           steerIn = clamp((game.yaw - ramDesired) * 5, -1, 1);
           reversing = false; S.reverseLeft = 0; S.stuckFor = 0;
-          if (S.backingOff) { thr = 0; brk = 1; }
-          else { thr = 1; brk = 0; }
+          const bumpSpeed = movingBumpSpeed(S.backingOff, target.speed ?? 0);
+          thr = clamp((bumpSpeed - game.speed) * 0.45, 0, 1);
+          brk = clamp((game.speed - bumpSpeed) * 0.5, 0, 1);
         } else S.backingOff = false;
       } else { hazard.current = null; S.passing = false; S.blockedFor = 0; S.stuckFor = 0; S.reverseLeft = 0; S.impatience = 0; S.ramming = false; }
       // After a hard hit the driver (or autopilot) briefly loses grip on steering and throttle.
       const grip = controlFactor(S.impact);
       // The autopilot keeps fighting back toward its lane while dazed.
-      steerIn *= auto ? Math.max(0.4, grip) : grip; thr *= grip;
+      steerIn *= auto ? Math.max(0.4, grip) : grip; thr *= auto ? Math.max(0.4, grip) : grip;
       S.steer += (steerIn - S.steer) * damp(7, dt);
 
       let v = game.speed;
@@ -289,6 +289,9 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         if (rev !== null) v = rev;
         else v = Math.min(v, maxV);
       }
+      // No deliberate standstill or brake overshoot in autopilot; from rest,
+      // accelerate naturally rather than jumping straight to the rolling floor.
+      if (auto) v = Math.max(Math.min(AUTOPILOT_MIN_SPEED, Math.max(0, game.speed) + FEEL.ACCEL * Math.max(0.4, grip) * dt), v);
       game.speed = v;
 
       const roadYaw = Math.atan(roadXd(game.z));
@@ -499,7 +502,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           const hit = computeImpact(Math.max(closing, Math.abs(latPush) > 0.6 ? game.speed * 0.5 : 0), Math.abs(latPush), massOf(car), NPC_MASS, latPush);
           if (!wasCrashing && freshContact) applyImpact(S.impact, hit);
           if (launched && n.crashMotion) { n.crashMotion.lateral *= hit.npcThrow; n.crashMotion.spin *= hit.npcThrow; n.crashMotion.vertical *= Math.sqrt(hit.npcThrow); }
-          if (hit.controlLoss > 0) game.speed = Math.max(0, game.speed - hit.playerSpeedLoss * 0.5);
+          if (hit.controlLoss > 0 && freshContact) game.speed = Math.max(auto ? AUTOPILOT_MIN_SPEED : 0, game.speed - hit.playerSpeedLoss * 0.5);
           if (launched) {
             n.reaction = "crash"; n.reactionLeft = 7; n.passing = false;
           }
@@ -517,6 +520,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           const firmness = auto && hit.controlLoss === 0 ? 0.25 : 1;
           game.x += push.x * firmness; game.z += push.z * firmness;
           game.shake = Math.max(auto ? 0.2 : 0.5, Math.min(1.5, hit.controlLoss * 0.6));
+          if (auto) game.speed = Math.max(AUTOPILOT_MIN_SPEED, game.speed);
         }
       }
     }

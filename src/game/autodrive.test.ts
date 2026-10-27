@@ -79,13 +79,13 @@ it("does not cut back into a car alongside or a fast car approaching from behind
     expect(planAutodrive(0, 25, "right", [car]).passing).toBe("right");
   }
 });
-it("stays right and stops short of a close wreck rather than bumping it or merging into an adjacent car", () => {
+it("keeps rolling when a close right-side wreck and an adjacent car block the usual return", () => {
   const result = planAutodrive(0, 25, "right", [
     { z: 0, lane: LANE, speed: 15, same: true },
     { z: -7, lane: RIGHT_PASS, speed: 0, same: true },
   ]);
   expect(result.lane).toBe(RIGHT_PASS);
-  expect(result.targetSpeed).toBe(0);
+  expect(result.targetSpeed).toBeGreaterThanOrEqual(3);
 });
 it("checks approaching oncoming cars before choosing the left passing lane", () => {
   const result = planAutodrive(0, 40, false, [
@@ -109,8 +109,8 @@ it("brakes early enough for a stopped car ahead at high speed", () => {
   const r = planAutodrive(0, 34, false, [{ z: -30, lane: LANE, speed: 0, same: true }, { z: -60, lane: -LANE, speed: 20, same: false }, { z: -32, lane: RIGHT_PASS, speed: 0, same: true }]);
   expect(r.targetSpeed).toBeLessThanOrEqual(Math.sqrt(2 * 7 * 23) + 0.01);
 });
-it("stops rather than creeping into an oncoming car in its path", () => {
-  expect(planAutodrive(0, 10, false, [{ z: -15, lane: LANE, speed: 20, same: false }]).targetSpeed).toBe(0);
+it("keeps moving while making a necessary slow escape from close oncoming traffic", () => {
+  expect(planAutodrive(0, 10, false, [{ z: -15, lane: LANE, speed: 20, same: false }]).targetSpeed).toBeGreaterThanOrEqual(3);
 });
 it("aims for the unlocked 200 km/h ceiling once the road allows it", () => {
   const v200 = maxSpeedForDistance(5000);
@@ -295,11 +295,11 @@ it("treats stopped wrecks identically regardless of their former driving directi
       .toEqual(planAutodrive(0, 10, true, [{ ...wreck, same: false }], 0, 0.05, -LANE));
   }
 });
-it("still stops for an opposite-direction wreck actually occupying the passing path", () => {
+it("keeps rolling for an opposite-direction wreck actually occupying the passing path", () => {
   const result = planAutodrive(0, 10, true, [
     { z: -5, lane: -LANE, speed: 0, same: false },
     { z: 0, lane: LANE, speed: 0, same: true },
     { z: 0, lane: RIGHT_PASS, speed: 0, same: true },
   ], 0, 0.05, -LANE);
-  expect(result.targetSpeed).toBe(0);
+  expect(result.targetSpeed).toBeGreaterThanOrEqual(3);
 });
