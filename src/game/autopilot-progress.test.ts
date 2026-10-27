@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { movingAutopilotSpeed, movingBumpSpeed, planAutodrive, RIGHT_PASS } from "./autodrive";
+import { lightAutopilotBrake, movingAutopilotSpeed, movingBumpSpeed, planAutodrive, RIGHT_PASS } from "./autodrive";
 import { LANE } from "./road";
 
 it("never asks to stop even with every crossing blocked by wrecks", () => {
@@ -7,7 +7,7 @@ it("never asks to stop even with every crossing blocked by wrecks", () => {
   const plan = planAutodrive(0, 10, false, cars);
   expect(plan.targetSpeed).toBe(3);
   expect(plan.pushThrough).toBe(true);
-  expect(movingAutopilotSpeed(plan.targetSpeed, Infinity, plan.pushThrough)).toBe(34);
+  expect(movingAutopilotSpeed(plan.targetSpeed, Infinity, plan.pushThrough)).toBe(34 * 0.65);
 });
 
 it("chooses a clear left roadside instead of pushing a blocked passing lane", () => {
@@ -27,10 +27,16 @@ it("chooses a clear left roadside instead of pushing a blocked passing lane", ()
   expect(planAutodrive(-20, 8, held.passing, [], 0, 0.05, -RIGHT_PASS).lane).toBe(LANE);
 });
 
-it("keeps cruising speed instead of braking for traffic, hazards or a blocked road", () => {
-  expect(movingAutopilotSpeed(3, 0, false)).toBe(34);
-  expect(movingAutopilotSpeed(15, 12, false)).toBe(34);
-  expect(movingAutopilotSpeed(3, 0, true, 300 / 3.6)).toBe(300 / 3.6);
+it("allows modest slowing for traffic and hazards without stopping", () => {
+  expect(movingAutopilotSpeed(3, 0, false)).toBe(34 * 0.65);
+  expect(movingAutopilotSpeed(30, Infinity, false)).toBe(30);
+  expect(movingAutopilotSpeed(3, 0, true, 300 / 3.6)).toBe((300 / 3.6) * 0.65);
+});
+
+it("brakes lightly when needed but never applies hard braking", () => {
+  expect(lightAutopilotBrake(34, 34)).toBe(0);
+  expect(lightAutopilotBrake(34, 30)).toBeCloseTo(0.105);
+  expect(lightAutopilotBrake(80, 25)).toBe(0.18);
 });
 
 it("does not slow down on clear road", () => {
