@@ -16,7 +16,7 @@ import type { Passing } from "./autodrive";
 import { flashLights, horn, trafficSignalRevision } from "./signals";
 import { chooseSporadicEvent, chooseTrafficReaction, npcTargetSpeed, shouldActSporadic, shouldAutopilotSignal, shouldSwerveForPass, signalLossMotion, SIGNAL_GAP, threatenedTraffic } from "./traffic-reaction";
 import type { TrafficReaction } from "./traffic-reaction";
-import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact, crashVisible } from "./npc-collision";
+import { npcCrash, npcOffset, resolveNpcCollision, resolveAutopilotNpcContact, crashVisible, shovedNpcSpeed } from "./npc-collision";
 import { canDriveAgain } from "./crash-physics";
 import { npcCruisingSpeed, planNpcDriving, stepNpcLane } from "./npc-driving";
 import type { DrivingNpc } from "./npc-driving";
