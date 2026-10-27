@@ -3,7 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { Component, Suspense, useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import * as THREE from "three";
-import { groundY, LANE, ROAD_HALF, roadX, roadXd, roadY, roadYd } from "./road";
+import { groundY, LANE, ROAD_HALF, roadRecovery, roadX, roadXd, roadY, roadYd } from "./road";
 import { CARS, FEEL, game, hudEls, input, net } from "./store";
 import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
@@ -316,11 +316,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         game.yaw += (desired - game.yaw) * damp(FEEL.ASSIST * Math.min(1, av / 8), dt);
       }
       // Off the tarmac: steer straight back onto the road immediately, even under input.
-      if (!auto && Math.abs(lat) > ROAD_HALF + 0.6) {
-        const target = lat >= 0 ? LANE : -LANE;
-        const desired = roadYaw - clamp((target - lat) * 0.09, -0.3, 0.3);
-        game.yaw += (desired - game.yaw) * damp(4.5, dt);
-      }
+      if (!auto && Math.abs(lat) > ROAD_HALF + 0.6) game.yaw = roadRecovery(game.z, lat, game.yaw, dt);
       // Oil slick: the car keeps spinning a little until the tyres grip again.
       game.yaw += S.oilSpin * dt; S.oilSpin *= Math.exp(-2.5 * dt);
       const imp = stepPlayerImpact(S.impact, dt);

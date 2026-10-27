@@ -57,6 +57,13 @@ export function lakeAmount(z: number, u: number) {
   return a;
 }
 export const WATER_DROP = 0.45;
+/** Off-road recovery: strong steering that pulls a car that left the tarmac straight back onto it. */
+export function roadRecovery(z: number, lat: number, yaw: number, dt: number) {
+  const roadYaw = Math.atan(roadXd(z));
+  const target = lat >= 0 ? LANE : -LANE;
+  const desired = roadYaw - Math.max(-0.3, Math.min(0.3, (target - lat) * 0.09));
+  return yaw + (desired - yaw) * (1 - Math.exp(-4.5 * dt));
+}
 
 /** Ground height at road-distance z and lateral offset u from the centerline. */
 export function groundY(z: number, u: number) {
