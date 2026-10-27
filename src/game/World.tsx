@@ -370,14 +370,14 @@ function Weather() {
     const look = WEATHER[kind];
     mat.color.copy(look.color); mat.size = look.size;
     pts.current!.position.set(camera.position.x, camera.position.y - 8, camera.position.z);
-    const a = geo.attributes.position!.array as Float32Array, t = clock.elapsedTime, step = Math.min(dt, 0.05);
+    const a = geo.attributes["position"]!.array as Float32Array, t = clock.elapsedTime, step = Math.min(dt, 0.05);
     for (let i = 0; i < DROPS; i++) {
       let y = a[i * 3 + 1]! - look.fall * step;
       if (y < 0) y += HIGH;
       a[i * 3 + 1] = y;
       a[i * 3] = ((a[i * 3]! + Math.sin(t + i) * look.drift * step + BOX) % (BOX * 2) + BOX * 2) % (BOX * 2) - BOX;
     }
-    geo.attributes.position!.needsUpdate = true;
+    geo.attributes["position"]!.needsUpdate = true;
   });
   return <points ref={pts} geometry={geo} material={mat} frustumCulled={false} />;
 }
