@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Improve early high-speed car dodging so autopilot avoids repeated collisions
+- [x] Improve early high-speed car dodging with crossing/merge predictions; 53 checks passed and live drive showed shoulder avoidance near 197 km/h
 - [x] Remove deliberate autopilot slowing/braking and embed car paint textures; 48 driving checks passed and live colored models verified without external texture requests
 - [x] Keep autopilot moving: find escape gaps first, push through complete blockages, and slow only when necessary
 - [x] Improve autopilot avoidance of rocks and oil splats
