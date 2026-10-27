@@ -3,7 +3,7 @@ import { cruisingDodge, RIGHT_PASS } from "./autodrive";
 import { LANE } from "./road";
 
 it("dodges a slower car early at 300 km/h without waiting behind it", () => {
-  expect(cruisingDodge(0, 300 / 3.6, LANE, [{ z: -150, lane: LANE, speed: 20, same: true }])?.lane).toBe(RIGHT_PASS);
+  expect(cruisingDodge(0, 300 / 3.6, LANE, [{ z: -150, lane: LANE, speed: 20, same: true }])?.lane).toBe(-LANE);
 });
 
 it("does not cross an alongside car to reach the shoulder", () => {
@@ -15,7 +15,7 @@ it("does not cross an alongside car to reach the shoulder", () => {
 });
 
 it("avoids a head-on overtaker early rather than holding its collision course", () => {
-  expect(cruisingDodge(0, 55, LANE, [{ z: -160, lane: LANE, speed: 30, same: false }])?.lane).toBe(RIGHT_PASS);
+  expect(cruisingDodge(0, 55, LANE, [{ z: -160, lane: LANE, speed: 30, same: false }])?.lane).toBe(-LANE);
 });
 
 it("leaves a clear road alone and does not dodge unrelated opposite-side traffic", () => {
@@ -29,4 +29,8 @@ it("rejects a shoulder into which another car is already merging", () => {
     { z: -35, lane: 6, speed: 35, same: true, laneVelocity: -2, targetLane: RIGHT_PASS },
   ]);
   expect(dodge?.lane).toBe(-LANE);
+});
+
+it("holds a clear committed pass midway through instead of switching sides", () => {
+  expect(cruisingDodge(0, 55, 0.1, [{ z: -100, lane: LANE, speed: 15, same: true }], -LANE)?.lane).toBe(-LANE);
 });

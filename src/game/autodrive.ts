@@ -15,7 +15,7 @@ export const RIGHT_PASS = ROAD_HALF - 1;
 export const RIGHT_PASS_WAIT = 1.5;
 export const AUTOPILOT_MIN_SPEED = 3;
 /** Early escape at cruising speed, using predicted gaps throughout the crossing. */
-export function cruisingDodge(z: number, speed: number, currentLane: number, cars: RoadCar[]) {
+export function cruisingDodge(z: number, speed: number, currentLane: number, cars: RoadCar[], committedLane?: number) {
   const approach = (c: RoadCar) => c.speed < 1 ? speed : c.same ? speed - c.speed : speed + c.speed;
   const threats = cars.filter((c) => {
     const gap = z - c.z;
@@ -24,9 +24,10 @@ export function cruisingDodge(z: number, speed: number, currentLane: number, car
       (Math.abs(c.lane - currentLane) < 2.2 || Math.abs(predictedLane(c, Math.max(0, gap / closing)) - currentLane) < 2.2);
   });
   if (!threats.length) return null;
-  const candidates = [LANE, RIGHT_PASS, -LANE, -RIGHT_PASS]
-    .filter((lane) => Math.abs(lane - currentLane) > 2.2)
-    .sort((a, b) => Math.abs(a - currentLane) - Math.abs(b - currentLane));
+  // Finish a safe crossing rather than picking a new side halfway through it.
+  // Normal road lanes win over shoulders, even when the shoulder is closer.
+  const candidates = [...new Set([...(committedLane === undefined ? [] : [committedLane]), LANE, -LANE, RIGHT_PASS, -RIGHT_PASS])]
+    .filter((lane) => lane === committedLane || Math.abs(lane - currentLane) > 2.2);
   for (const target of candidates) {
     const crossingTime = 0.45 + Math.abs(target - currentLane) / 3;
     const clear = cars.every((c) => {
@@ -157,9 +158,13 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   return { lane: escapeLane, targetSpeed: Math.max(AUTOPILOT_MIN_SPEED, targetSpeed), passing: next, blockedFor: next ? 0 : waited, pushThrough };
 }
 
-/** Steering plans still choose gaps, but traffic must not lower cruising speed. */
-export function movingAutopilotSpeed(_trafficSpeed: number, _hazardSpeed: number, _pushThrough: boolean, cruiseSpeed = 34) {
-  return cruiseSpeed;
+/** Modest speed relief gives steering room without parking behind traffic. */
+export function movingAutopilotSpeed(trafficSpeed: number, hazardSpeed: number, _pushThrough: boolean, cruiseSpeed = 34) {
+  return Math.max(AUTOPILOT_MIN_SPEED, cruiseSpeed * 0.65, Math.min(cruiseSpeed, trafficSpeed, hazardSpeed));
+}
+
+export function lightAutopilotBrake(speed: number, targetSpeed: number) {
+  return Math.min(0.18, Math.max(0, (speed - targetSpeed - 1) * 0.035));
 }
 
 /** Back off by rolling slower, not by stopping/reversing into traffic. */
