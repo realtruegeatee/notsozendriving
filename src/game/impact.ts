@@ -45,6 +45,12 @@ export function applyImpact(state: PlayerImpact, r: ImpactResult) {
   state.control = Math.max(state.control, r.controlLoss);
 }
 
+/** On autopilot the car holds its line: the hit car takes the whole blow, the player is never launched. */
+export function applyPlayerImpact(state: PlayerImpact, r: ImpactResult, autopilot: boolean) {
+  if (autopilot) return;
+  applyImpact(state, r);
+}
+
 /** Substepped decay: tyres scrub the slide, the spin damps, control returns. Returns sideways distance moved. */
 export function stepPlayerImpact(state: PlayerImpact, dt: number) {
   let moved = 0, turned = 0;

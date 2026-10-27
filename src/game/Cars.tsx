@@ -7,7 +7,7 @@ import { groundY, LANE, ROAD_HALF, roadRecovery, roadX, roadXd, roadY, roadYd } 
 import { CARS, FEEL, game, hudEls, input, net } from "./store";
 import { carContact, STALE_MS, teleportPose } from "./multiplayer-math";
 import type { CarId } from "./store";
-import { applyImpact, computeImpact, controlFactor, createPlayerImpact, massOf, NPC_MASS, stepPlayerImpact } from "./impact";
+import { applyPlayerImpact, computeImpact, controlFactor, createPlayerImpact, massOf, NPC_MASS, stepPlayerImpact } from "./impact";
 import { aggressionProfile } from "./aggression";
 import { AUTOPILOT_MIN_SPEED, cruisingDodge, lightAutopilotBrake, movingAutopilotSpeed, planAutodrive, ramTarget, stepBump, stepImpatience } from "./autodrive";
 import { manualReverse } from "./reverse";
@@ -514,7 +514,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           const latPush = (push.x * Math.cos(game.yaw) - push.z * Math.sin(game.yaw)) / plen;
           const closing = n.lane > 0 ? Math.max(0, game.speed - n.v) : game.speed + n.v;
           const hit = computeImpact(Math.max(closing, Math.abs(latPush) > 0.6 ? game.speed * 0.5 : 0), Math.abs(latPush), massOf(car), NPC_MASS, latPush);
-          if (!wasCrashing && freshContact) applyImpact(S.impact, hit);
+          if (!wasCrashing && freshContact) applyPlayerImpact(S.impact, hit, auto);
           if (launched && n.crashMotion) { n.crashMotion.lateral *= hit.npcThrow; n.crashMotion.spin *= hit.npcThrow; n.crashMotion.vertical *= Math.sqrt(hit.npcThrow); }
           if (launched) {
             n.reaction = "crash"; n.reactionLeft = 7; n.passing = false;
@@ -525,8 +525,8 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
             const share = (game.speed - n.v) * 0.6;
             n.v += share; n.s += Math.min(1.5, share * 0.08);
           }
-          // On autopilot the car holds its line: only a nudge of the contact push applies.
-          const firmness = auto && hit.controlLoss === 0 ? 0.25 : 1;
+          // On autopilot the car holds its line: only a nudge of the contact push applies, hard hits included.
+          const firmness = auto ? 0.25 : 1;
           game.x += push.x * firmness; game.z += push.z * firmness;
           game.shake = Math.max(auto ? 0.2 : 0.5, Math.min(1.5, hit.controlLoss * 0.6));
           if (auto) game.speed = Math.max(AUTOPILOT_MIN_SPEED, game.speed);
