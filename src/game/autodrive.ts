@@ -20,7 +20,7 @@ export function cruisingDodge(z: number, speed: number, currentLane: number, car
   const threats = cars.filter((c) => {
     const gap = z - c.z;
     const closing = approach(c);
-    return closing > 2 && gap > -4 && gap < Math.max(35, closing * 3.2) &&
+    return closing > 2 && gap > -4 && gap < Math.max(45, closing * 4.2) &&
       (Math.abs(c.lane - currentLane) < 2.2 || Math.abs(predictedLane(c, Math.max(0, gap / closing)) - currentLane) < 2.2);
   });
   if (!threats.length) return null;

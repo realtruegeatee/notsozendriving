@@ -250,7 +250,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           const horizon = Math.max(2, Math.abs(target - offset) / 1.8);
           const futureGap = gap + ((c.same ? c.speed : -c.speed) - game.speed) * horizon;
           const futureLane = c.lane + c.laneVelocity * horizon;
-          return Math.min(gap, futureGap) < 18 && Math.max(gap, futureGap) > -12 && Math.abs(futureLane - target) < 2.2;
+          return Math.min(gap, futureGap) < 24 && Math.max(gap, futureGap) > -12 && Math.abs(futureLane - target) < 2.2;
         });
         const dodge = autopilotHazardPlan(events.current, -game.z, offset, game.speed, hazard.current, blocked);
         hazard.current = dodge.memory;
@@ -259,7 +259,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const curveSpeed = cruiseSpeed * (1 - Math.min(0.28, bend * 2));
         const targetSpeed = Math.min(curveSpeed, movingAutopilotSpeed(evasive ? cruiseSpeed : plan.targetSpeed, dodge.speed, plan.pushThrough, cruiseSpeed));
         const desired = Math.atan2(game.x - roadX(lookZ) - (dodge.target ?? plan.lane), game.z - lookZ);
-        steerIn = clamp((game.yaw - desired) * 5, -1, 1);
+        steerIn = clamp((game.yaw - desired) * (evasive || dodge.target !== undefined ? 7.5 : 5), -1, 1);
         thr = clamp((targetSpeed - game.speed) * 0.45, 0, 1);
         brk = lightAutopilotBrake(game.speed, targetSpeed);
         // Recovery stays forward-moving: the planner seeks roadside gaps,
