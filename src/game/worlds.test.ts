@@ -8,7 +8,7 @@ describe("worlds", () => {
     expect(worldAt(0)).toMatchObject({ number: 1, label: "world 01", name: "the meadow" });
   });
   it("advances one world per biome stretch", () => {
-    expect(worldAt(900 * 3 + 10).label).toBe("world 04");
+    expect(worldAt(BIOME_LEN * 3 + 10).label).toBe("world 04");
   });
 });
 

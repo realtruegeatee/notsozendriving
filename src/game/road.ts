@@ -30,11 +30,11 @@ function smooth(t: number) {
   return c * c * (3 - 2 * c);
 }
 
-// Biomes change every few hundred metres, blending smoothly between neighbours.
+// Biomes change every couple of kilometres, blending smoothly between neighbours.
 export const BIOMES = ["meadow", "forest", "desert", "alpine", "lake", "tundra", "neon", "volcanic", "tropical"] as const;
 export type Biome = (typeof BIOMES)[number];
 export type BiomeWeights = Record<Biome, number>;
-export const BIOME_LEN = 900;
+export const BIOME_LEN = 2400;
 export function biomeOf(segment: number): Biome {
   return segment <= 0 ? "meadow" : BIOMES[Math.floor(hash(segment * 7.31 + 2) * BIOMES.length)] ?? "meadow";
 }

@@ -294,7 +294,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
       v -= FEEL.BRAKE * brk * dt;
       v *= Math.exp(-FEEL.DRAG * dt);
       const lat = game.x - roadX(game.z);
-      if (!auto && Math.abs(lat) > ROAD_HALF + 0.6) v *= Math.exp(-0.9 * dt);
+      if (!auto && Math.abs(lat) > ROAD_HALF + 0.6) v *= Math.exp(-0.35 * dt);
       if (reversing) v = v + (-4 - v) * damp(3, dt);
       else {
         const rev = !auto ? manualReverse(v, brk, dt) : null;
@@ -314,6 +314,12 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
         const target = lat >= 0 ? LANE : -LANE;
         const desired = roadYaw - clamp((target - lat) * 0.07, -0.22, 0.22);
         game.yaw += (desired - game.yaw) * damp(FEEL.ASSIST * Math.min(1, av / 8), dt);
+      }
+      // Off the tarmac: steer straight back onto the road immediately, even under input.
+      if (!auto && Math.abs(lat) > ROAD_HALF + 0.6) {
+        const target = lat >= 0 ? LANE : -LANE;
+        const desired = roadYaw - clamp((target - lat) * 0.09, -0.3, 0.3);
+        game.yaw += (desired - game.yaw) * damp(4.5, dt);
       }
       // Oil slick: the car keeps spinning a little until the tyres grip again.
       game.yaw += S.oilSpin * dt; S.oilSpin *= Math.exp(-2.5 * dt);
