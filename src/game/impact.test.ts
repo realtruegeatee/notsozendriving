@@ -1,5 +1,20 @@
 import { expect, it } from "vitest";
-import { applyImpact, computeImpact, controlFactor, createPlayerImpact, massOf, stepPlayerImpact } from "./impact";
+import { applyImpact, applyPlayerImpact, computeImpact, controlFactor, createPlayerImpact, massOf, stepPlayerImpact } from "./impact";
+
+it("the autopilot never gets launched by a hit", () => {
+  const s = createPlayerImpact();
+  applyPlayerImpact(s, computeImpact(40, 1, 1.4, 1.4, 1), true);
+  expect(s.lateral).toBe(0);
+  expect(s.spin).toBe(0);
+  expect(s.control).toBe(0);
+  expect(controlFactor(s)).toBe(1);
+});
+it("manual driving still absorbs the impact", () => {
+  const s = createPlayerImpact();
+  applyPlayerImpact(s, computeImpact(20, 1, 1.4, 1.4, 1), false);
+  expect(s.lateral).not.toBe(0);
+  expect(s.control).toBeGreaterThan(0);
+});
 
 it("a heavy truck barely moves while a hatchback gets thrown", () => {
   const truck = computeImpact(25, 0.5, massOf("truck"), 1.4, 1);
