@@ -140,7 +140,7 @@ export function stepUnstick(stuckFor: number, reverseLeft: number, speed: number
 
 // Impatience ramming: after RAM_AFTER s held up by a car ahead in its lane, autopilot rams it until clear.
 export const RAM_AFTER = 3;
-type RamCar = { z: number; lane: number; same: boolean };
+type RamCar = { z: number; lane: number; same: boolean; speed?: number };
 export function ramTarget(z: number, lat: number, cars: RamCar[]) {
   let best: RamCar | null = null;
   for (const c of cars) {

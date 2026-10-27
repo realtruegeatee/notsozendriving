@@ -265,7 +265,7 @@ export function Traffic({ car, traffic = true }: { car: CarId; traffic?: boolean
           const ramDesired = Math.atan2(lat0 - target.lane, game.z - target.z);
           steerIn = clamp((game.yaw - ramDesired) * 5, -1, 1);
           reversing = false; S.reverseLeft = 0; S.stuckFor = 0;
-          const bumpSpeed = movingBumpSpeed(S.backingOff, Math.max(0, game.speed - 1));
+          const bumpSpeed = movingBumpSpeed(S.backingOff, target.speed ?? 0);
           thr = clamp((bumpSpeed - game.speed) * 0.45, 0, 1);
           brk = clamp((game.speed - bumpSpeed) * 0.5, 0, 1);
         } else S.backingOff = false;
