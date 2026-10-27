@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Keep autopilot moving: find escape gaps first, push through complete blockages, and slow only when necessary
 - [x] Improve autopilot avoidance of rocks and oil splats
 - [x] Give Zen fewer cars and calm driving behaviour
 - [x] Fix crashed cars on the opposite side wrongly stopping the autopilot
