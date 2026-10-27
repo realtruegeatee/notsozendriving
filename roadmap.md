@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Prevent unnecessary autopilot slowing during passing and restore visible car colors
+- [x] Remove deliberate autopilot slowing/braking and embed car paint textures; 48 driving checks passed and live colored models verified without external texture requests
 - [x] Keep autopilot moving: find escape gaps first, push through complete blockages, and slow only when necessary
 - [x] Improve autopilot avoidance of rocks and oil splats
 - [x] Give Zen fewer cars and calm driving behaviour

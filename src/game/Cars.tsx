@@ -73,7 +73,8 @@ class CarModelBoundary extends Component<{ url: string; children: ReactNode }, {
 }
 
 export function CarModel(props: CarModelProps) {
-  return <CarModelBoundary url={props.url}><GltfCar {...props} /></CarModelBoundary>;
+  const url = `${props.url}?paint=embedded-v1`;
+  return <CarModelBoundary url={url}><GltfCar {...props} url={url} /></CarModelBoundary>;
 }
 
 function GltfCar({ url, wheels, driverId }: CarModelProps) {
