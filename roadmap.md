@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Keep autopilot moving: find escape gaps first, push through complete blockages, and slow only when necessary
+- [x] Keep autopilot moving: find escape gaps first, push through complete blockages, and slow only when necessary
 - [x] Improve autopilot avoidance of rocks and oil splats
 - [x] Give Zen fewer cars and calm driving behaviour
 - [x] Fix crashed cars on the opposite side wrongly stopping the autopilot
@@ -43,7 +43,7 @@
 - [x] Autopilot finds more gaps; biomes with lakes, mountains, forest, desert
 - [x] Head-on NPC crashes: one wreck, one recovering driver (replaces the earlier two-wreck behavior)
 - [x] Fix NPCs freezing mid-pass in the oncoming lane
-- [x] Autopilot brakes earlier and stops short of cars instead of bumping
+- [x] Autopilot brakes earlier for traffic; forward-only escape/push recovery supersedes stopping short
 - [x] Raise the top speed to 200 km/h once 5.0 km is driven
 - [x] Bind keyboard: T flashes headlights, X honks
 - [x] Recognise oncoming overtakers and take a clear escape instead of stopping in their lane
