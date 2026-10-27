@@ -10,11 +10,11 @@ export function predictedLane(car: RoadCar, seconds: number) {
   return velocity > 0 ? Math.min(projected, Math.max(car.lane, car.targetLane)) : Math.max(projected, Math.min(car.lane, car.targetLane));
 }
 // true retains the original left-pass state; right passes must retain their side too.
-export type Passing = boolean | "right";
+export type Passing = boolean | "right" | "left-shoulder";
 export const RIGHT_PASS = ROAD_HALF - 1;
 export const RIGHT_PASS_WAIT = 1.5;
 export const AUTOPILOT_MIN_SPEED = 3;
-export function planAutodrive(z: number, speed: number, passing: Passing, cars: RoadCar[], blockedFor = 0, dt = 0, currentLane = passing === "right" ? RIGHT_PASS : passing ? -LANE : LANE, maxSpeed = 34) {
+export function planAutodrive(z: number, speed: number, passing: Passing, cars: RoadCar[], blockedFor = 0, dt = 0, currentLane = passing === "right" ? RIGHT_PASS : passing === "left-shoulder" ? -RIGHT_PASS : passing ? -LANE : LANE, maxSpeed = 34) {
   const overlaps = (c: RoadCar, lane: number, seconds = 0) => Math.abs(predictedLane(c, seconds) - lane) < 2.2;
   // A stopped wreck has no oncoming direction, even if it used to travel toward us.
   const stationary = (c: RoadCar) => c.speed < 1;
@@ -42,7 +42,9 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   const waiting = !passing && blocker && z - blocker.z >= 0 && z - blocker.z <= 40 && leftBlocked;
   const waited = waiting ? Math.min(RIGHT_PASS_WAIT, blockedFor + Math.max(0, dt)) : 0;
   let next: Passing = false;
-  if (passing === "right") {
+  if (passing === "left-shoulder") {
+    next = mergeSafe ? false : "left-shoulder";
+  } else if (passing === "right") {
     // Return on the very first safe frame, not after clearing all distant traffic.
     next = mergeSafe ? false : "right";
   } else if (passing ? Boolean(blocker) || !mergeSafe : Boolean(blocker)) {
@@ -53,7 +55,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   // Direction comes from the NPC's home lane, not its overtaking offset.
   // Spot an oncoming overtaker early enough to steer out, rather than merely
   // braking in its path. Keep the existing right-pass state until merging is safe.
-  const threatenedLane = next === "right" ? RIGHT_PASS : next ? -LANE : LANE;
+  const threatenedLane = next === "right" ? RIGHT_PASS : next === "left-shoulder" ? -RIGHT_PASS : next ? -LANE : LANE;
   const oncoming = cars.some((c) => !c.same && !stationary(c) && z - c.z > -8 &&
     z - c.z < Math.max(90, (Math.max(0, speed) + c.speed) * 3) &&
     (overlaps(c, currentLane) || overlaps(c, threatenedLane) || overlaps(c, currentLane, encounter(c)) || overlaps(c, threatenedLane, encounter(c))));
@@ -78,7 +80,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
     Math.max(gap > keep + 3 ? CREEP : 0, Math.min(carSpeed + (gap - keep) * 0.7, Math.sqrt(carSpeed * carSpeed + 2 * 7 * Math.max(0, gap - keep))));
   let targetSpeed = maxSpeed;
   if (!next && blocker) targetSpeed = Math.min(targetSpeed, follow(blocker.speed, z - blocker.z, 9));
-  const lane = next === "right" ? RIGHT_PASS : next ? -LANE : LANE;
+  const lane = next === "right" ? RIGHT_PASS : next === "left-shoulder" ? -RIGHT_PASS : next ? -LANE : LANE;
   // Brake for hazards in the destination lane and close hazards along the lane-change path.
   for (const c of cars) {
     const gap = z - c.z;
@@ -114,7 +116,7 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
     }));
     if (escape !== undefined) {
       escapeLane = escape;
-      next = escape === LANE ? false : escape > 0 ? "right" : true;
+      next = escape === LANE ? false : escape > 0 ? "right" : escape === -RIGHT_PASS ? "left-shoulder" : true;
       // Keep steering room on a last-second escape; accelerate once clear.
       targetSpeed = Math.max(AUTOPILOT_MIN_SPEED, Math.min(maxSpeed, 8));
     } else pushThrough = true;
