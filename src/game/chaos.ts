@@ -14,8 +14,8 @@ export function trafficProfile(c: Chaos) {
 }
 export function chaosProfile(c: Chaos): ChaosProfile {
   if (c === "zen") return { pileup: 0, ragePerSec: 0, eventGap: Infinity, wrongWayGap: Infinity, power: 0 };
-  if (c === "normal") return { pileup: 0.5, ragePerSec: 0.04, eventGap: 14, wrongWayGap: 40, power: 1 };
-  return { pileup: 0.9, ragePerSec: 0.12, eventGap: 6, wrongWayGap: 18, power: 1.4 };
+  if (c === "normal") return { pileup: 0.5, ragePerSec: 0.04, eventGap: Infinity, wrongWayGap: 40, power: 1 };
+  return { pileup: 0.9, ragePerSec: 0.12, eventGap: Infinity, wrongWayGap: 18, power: 1.4 };
 }
 
 /** Seconds a road-rage driver hunts the player before giving up. */
