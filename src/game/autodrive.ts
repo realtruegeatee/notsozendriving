@@ -14,6 +14,39 @@ export type Passing = boolean | "right" | "left-shoulder";
 export const RIGHT_PASS = ROAD_HALF - 1;
 export const RIGHT_PASS_WAIT = 1.5;
 export const AUTOPILOT_MIN_SPEED = 3;
+/** Early escape at cruising speed, using predicted gaps throughout the crossing. */
+export function cruisingDodge(z: number, speed: number, currentLane: number, cars: RoadCar[]) {
+  const approach = (c: RoadCar) => c.speed < 1 ? speed : c.same ? speed - c.speed : speed + c.speed;
+  const threats = cars.filter((c) => {
+    const gap = z - c.z;
+    const closing = approach(c);
+    return closing > 2 && gap > -4 && gap < Math.max(35, closing * 3.2) &&
+      (Math.abs(c.lane - currentLane) < 2.2 || Math.abs(predictedLane(c, Math.max(0, gap / closing)) - currentLane) < 2.2);
+  });
+  if (!threats.length) return null;
+  const candidates = [LANE, RIGHT_PASS, -LANE, -RIGHT_PASS]
+    .filter((lane) => Math.abs(lane - currentLane) > 2.2)
+    .sort((a, b) => Math.abs(a - currentLane) - Math.abs(b - currentLane));
+  for (const target of candidates) {
+    const crossingTime = 0.45 + Math.abs(target - currentLane) / 3;
+    const clear = cars.every((c) => {
+      const gap = z - c.z;
+      // The car ahead may occupy our starting lane, but there must be time to leave it.
+      if (threats.includes(c) && Math.abs(c.lane - target) >= 2.2 &&
+          Math.abs(predictedLane(c, crossingTime) - target) >= 2.2 && gap > 6 + Math.max(0, approach(c)) * crossingTime) return true;
+      for (const t of [0, crossingTime * 0.5, crossingTime, crossingTime + 0.8]) {
+        const ourLane = currentLane + (target - currentLane) * Math.min(1, t / crossingTime);
+        const futureGap = gap - approach(c) * t;
+        if (Math.abs(predictedLane(c, t) - ourLane) < 2.2 && futureGap > -8 && futureGap < 10) return false;
+      }
+      const encounterTime = Math.max(0, gap / Math.max(1, approach(c)));
+      if (encounterTime < crossingTime + 1.5 && gap > -8 && Math.abs(predictedLane(c, encounterTime) - target) < 2.2) return false;
+      return true;
+    });
+    if (clear) return { lane: target, passing: target === LANE ? false : target === RIGHT_PASS ? "right" : target === -RIGHT_PASS ? "left-shoulder" : true } as { lane: number; passing: Passing };
+  }
+  return null;
+}
 export function planAutodrive(z: number, speed: number, passing: Passing, cars: RoadCar[], blockedFor = 0, dt = 0, currentLane = passing === "right" ? RIGHT_PASS : passing === "left-shoulder" ? -RIGHT_PASS : passing ? -LANE : LANE, maxSpeed = 34) {
   const overlaps = (c: RoadCar, lane: number, seconds = 0) => Math.abs(predictedLane(c, seconds) - lane) < 2.2;
   // A stopped wreck has no oncoming direction, even if it used to travel toward us.
@@ -124,9 +157,9 @@ export function planAutodrive(z: number, speed: number, passing: Passing, cars: 
   return { lane: escapeLane, targetSpeed: Math.max(AUTOPILOT_MIN_SPEED, targetSpeed), passing: next, blockedFor: next ? 0 : waited, pushThrough };
 }
 
-/** Necessary braking never becomes parking; a blocked bumper gets a gentle push. */
-export function movingAutopilotSpeed(trafficSpeed: number, hazardSpeed: number, pushThrough: boolean) {
-  return Math.max(AUTOPILOT_MIN_SPEED, Math.min(pushThrough ? Math.max(6, trafficSpeed) : trafficSpeed, hazardSpeed));
+/** Steering plans still choose gaps, but traffic must not lower cruising speed. */
+export function movingAutopilotSpeed(_trafficSpeed: number, _hazardSpeed: number, _pushThrough: boolean, cruiseSpeed = 34) {
+  return cruiseSpeed;
 }
 
 /** Back off by rolling slower, not by stopping/reversing into traffic. */
