@@ -19,6 +19,12 @@ it("chooses a clear left roadside instead of pushing a blocked passing lane", ()
   expect(plan.lane).toBe(-RIGHT_PASS);
   expect(plan.pushThrough).toBe(false);
   expect(plan.targetSpeed).toBe(8);
+  const held = planAutodrive(0, 8, plan.passing, [
+    { z: -5, lane: -LANE, speed: 0, same: false },
+    { z: 0, lane: LANE, speed: 0, same: true },
+  ], 0, 0.05, -RIGHT_PASS);
+  expect(held.lane).toBe(-RIGHT_PASS);
+  expect(planAutodrive(-20, 8, held.passing, [], 0, 0.05, -RIGHT_PASS).lane).toBe(LANE);
 });
 
 it("slows for an unavoidable hazard without ever requesting a standstill", () => {
