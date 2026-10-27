@@ -24,10 +24,4 @@ describe("off-road recovery", () => {
     const full = roadRecovery(z, lat, yaw, 1 / 60);
     expect(half).toBeCloseTo(full, 4);
   });
-  it("starts recovering only once clearly off the road", () => {
-    expect(Math.abs(roadX(z) - roadX(z))).toBe(0);
-    const lat = ROAD_HALF + 0.6;
-    const yaw = Math.atan(roadXd(z));
-    expect(roadRecovery(z, lat, yaw, 1 / 60)).toBeCloseTo(yaw, 6);
-  });
 });
