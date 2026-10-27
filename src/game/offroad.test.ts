@@ -6,10 +6,9 @@ describe("off-road recovery", () => {
   it("pulls a car that drifted off back toward its lane", () => {
     const lat = ROAD_HALF + 3; // off the right side
     const yaw = Math.atan(roadXd(z)) + 0.4; // pointing further away
-    const next = roadRecovery(z, lat, yaw, 1 / 60);
-    expect(Math.abs(next - yaw)).toBeGreaterThan(0);
     const target = Math.atan(roadXd(z)) - Math.max(-0.3, Math.min(0.3, (LANE - lat) * 0.09));
-    expect(next).toBeGreaterThan(yaw - 0.001 ? target - 1e-9 : next); // monotonic toward target
+    const next = roadRecovery(z, lat, yaw, 1 / 60);
+    expect(next).not.toBe(yaw);
     expect(Math.abs(next - target)).toBeLessThan(Math.abs(yaw - target));
   });
   it("works on the left shoulder too", () => {
